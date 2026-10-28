@@ -1,0 +1,363 @@
+
+swagger: '2.0'
+
+info:
+  version: 1.0.0
+  title: IT Service Appointment API
+  description: >
+    REST API for managing IT service providers, IT services,
+    appointment suggestions, and customer appointments.
+    Customer numbers from the legacy system are supported.
+
+host: 127.0.0.1
+basePath: /
+schemes:
+  - http
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+tags:
+  - name: it-services
+    description: IT-Service-Anbieter und ihre Kapazitäten
+  - name: services
+    description: Angebotene IT-Dienstleistungen
+  - name: appointments
+    description: Kundentermine
+  - name: appointment-suggestions
+    description: Verfügbare Terminvorschläge
+
+paths:
+  /it-services:
+    get:
+      tags:
+        - it-services
+      summary: Alle IT-Service-Anbieter abrufen
+      operationId: getITServices
+      responses:
+        '200':
+          description: Liste aller IT-Service-Anbieter
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/itService'
+
+  /it-services/{serviceId}:
+    get:
+      tags:
+        - it-services
+      summary: Details eines IT-Service-Anbieters abrufen
+      operationId: getITService
+      parameters:
+        - $ref: '#/parameters/serviceId'
+      responses:
+        '200':
+          description: IT-Service-Anbieter gefunden
+          schema:
+            $ref: '#/definitions/itService'
+        '404':
+          description: IT-Service-Anbieter nicht gefunden
+
+  /it-services/{serviceId}/services:
+    get:
+      tags:
+        - services
+      summary: Dienstleistungen eines IT-Service-Anbieters abrufen
+      operationId: getRepairServices
+      parameters:
+        - $ref: '#/parameters/serviceId'
+      responses:
+        '200':
+          description: Liste der angebotenen Dienstleistungen
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/repairService'
+        '404':
+          description: IT-Service-Anbieter nicht gefunden
+
+  /it-services/{serviceId}/appointments:
+    get:
+      tags:
+        - appointments
+      summary: Kundentermine eines IT-Service-Anbieters abrufen
+      operationId: getAppointments
+      parameters:
+        - $ref: '#/parameters/serviceId'
+        - name: from
+          in: query
+          description: Beginn des Abfragezeitraums inklusive (ISO 8601)
+          required: false
+          type: string
+          format: date-time
+        - name: to
+          in: query
+          description: Ende des Abfragezeitraums inklusive (ISO 8601)
+          required: false
+          type: string
+          format: date-time
+        - name: repairServiceId
+          in: query
+          description: Termine auf eine bestimmte Dienstleistung beschränken
+          required: false
+          type: string
+        - name: customerNumber
+          in: query
+          description: Termine nach Kundennummer filtern
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Liste der Kundentermine
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/appointment'
+        '404':
+          description: IT-Service-Anbieter nicht gefunden
+
+    post:
+      tags:
+        - appointments
+      summary: Neuen Kundentermin buchen
+      description: >
+        Bucht einen Termin für eine ausgewählte IT-Dienstleistung.
+        Die Dauer wird anhand der konfigurierten Dienstleistung berechnet.
+        Vor der Buchung muss die Kapazität erneut geprüft werden.
+        Bei ausgeschöpfter Kapazität wird HTTP 409 zurückgegeben.
+      operationId: createAppointment
+      parameters:
+        - $ref: '#/parameters/serviceId'
+        - name: appointment
+          in: body
+          description: Angaben zum gewünschten Termin
+          required: true
+          schema:
+            $ref: '#/definitions/appointmentRequest'
+      responses:
+        '201':
+          description: Termin erfolgreich gebucht
+          schema:
+            $ref: '#/definitions/appointment'
+        '400':
+          description: Ungültige Buchungsdaten oder ungültiger Zeitraster
+        '404':
+          description: IT-Service-Anbieter oder Dienstleistung nicht gefunden
+        '409':
+          description: Termin nicht verfügbar oder Kapazität ausgeschöpft
+
+  /it-services/{serviceId}/appointments/{appointmentId}:
+    get:
+      tags:
+        - appointments
+      summary: Details eines Kundentermins abrufen
+      operationId: getAppointment
+      parameters:
+        - $ref: '#/parameters/serviceId'
+        - name: appointmentId
+          in: path
+          description: Eindeutige Kennung des Termins
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Termindetails
+          schema:
+            $ref: '#/definitions/appointment'
+        '404':
+          description: Termin oder IT-Service-Anbieter nicht gefunden
+
+  /it-services/{serviceId}/appointment-suggestions:
+    get:
+      tags:
+        - appointment-suggestions
+      summary: Verfügbare Termine vorschlagen
+      description: >
+        Liefert verfügbare Startzeiten im 15-Minuten-Raster.
+        Die Dauer der gewählten Dienstleistung und die parallele
+        Kapazität des Anbieters werden berücksichtigt.
+        Bestehende und importierte Termine fließen in die Berechnung ein.
+      operationId: getAppointmentSuggestions
+      parameters:
+        - $ref: '#/parameters/serviceId'
+        - name: repairServiceId
+          in: query
+          description: Kennung der gewünschten Dienstleistung
+          required: true
+          type: string
+        - name: from
+          in: query
+          description: Beginn des Suchzeitraums (ISO 8601)
+          required: true
+          type: string
+          format: date-time
+        - name: to
+          in: query
+          description: Ende des Suchzeitraums (ISO 8601)
+          required: true
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: Liste verfügbarer Terminvorschläge
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/appointmentSuggestion'
+        '400':
+          description: Ungültiger Suchzeitraum
+        '404':
+          description: IT-Service-Anbieter oder Dienstleistung nicht gefunden
+
+parameters:
+  serviceId:
+    name: serviceId
+    in: path
+    description: Eindeutige Kennung des IT-Service-Anbieters
+    required: true
+    type: string
+
+definitions:
+  itService:
+    type: object
+    required:
+      - id
+      - name
+      - capacity
+    properties:
+      id:
+        type: string
+        description: Eindeutige Kennung des IT-Service-Anbieters
+        example: IT-MUELLER
+      name:
+        type: string
+        description: Name des IT-Service-Anbieters
+        example: IT-Service Müller
+      capacity:
+        type: integer
+        minimum: 1
+        description: Maximale Anzahl parallel laufender Termine
+        example: 2
+
+  repairService:
+    type: object
+    required:
+      - id
+      - code
+      - name
+      - durationMinutes
+    properties:
+      id:
+        type: string
+        description: Eindeutige Kennung der Dienstleistung
+        example: DIA
+      code:
+        type: string
+        description: Leistungscode aus dem Altsystem
+        example: DIA
+      name:
+        type: string
+        description: Bezeichnung der Dienstleistung
+        example: PC-Diagnose
+      durationMinutes:
+        type: integer
+        minimum: 1
+        description: Bearbeitungsdauer in Minuten
+        example: 30
+
+  appointment:
+    type: object
+    required:
+      - id
+      - customerNumber
+      - start
+      - end
+      - serviceId
+      - serviceName
+      - repairServiceId
+      - repairServiceName
+    properties:
+      id:
+        type: string
+        description: Eindeutige Kennung des Termins
+        example: APPT-1001
+      customerNumber:
+        type: string
+        description: Kundennummer aus dem Altsystem
+        example: '10001'
+      start:
+        type: string
+        format: date-time
+        description: Startzeitpunkt des Termins (ISO 8601)
+        example: '2026-11-02T09:00:00Z'
+      end:
+        type: string
+        format: date-time
+        description: Endzeitpunkt des Termins (ISO 8601)
+        example: '2026-11-02T09:30:00Z'
+      serviceId:
+        type: string
+        description: Kennung des IT-Service-Anbieters
+        example: IT-MUELLER
+      serviceName:
+        type: string
+        description: Name des IT-Service-Anbieters
+        example: IT-Service Müller
+      repairServiceId:
+        type: string
+        description: Kennung der gebuchten Dienstleistung
+        example: DIA
+      repairServiceName:
+        type: string
+        description: Bezeichnung der gebuchten Dienstleistung
+        example: PC-Diagnose
+
+  appointmentRequest:
+    type: object
+    required:
+      - customerNumber
+      - start
+      - repairServiceId
+    properties:
+      customerNumber:
+        type: string
+        description: Kundennummer des Kunden
+        example: '10001'
+      start:
+        type: string
+        format: date-time
+        description: Gewünschter Startzeitpunkt im 15-Minuten-Raster
+        example: '2026-11-02T09:00:00Z'
+      repairServiceId:
+        type: string
+        description: Kennung der gewünschten Dienstleistung
+        example: DIA
+
+  appointmentSuggestion:
+    type: object
+    required:
+      - start
+      - end
+      - serviceId
+      - repairServiceId
+    properties:
+      start:
+        type: string
+        format: date-time
+        description: Vorgeschlagener Startzeitpunkt
+        example: '2026-11-02T09:00:00Z'
+      end:
+        type: string
+        format: date-time
+        description: Voraussichtlicher Endzeitpunkt
+        example: '2026-11-02T09:30:00Z'
+      serviceId:
+        type: string
+        description: Kennung des IT-Service-Anbieters
+        example: IT-MUELLER
+      repairServiceId:
+        type: string
+        description: Kennung der Dienstleistung
+        example: DIA
