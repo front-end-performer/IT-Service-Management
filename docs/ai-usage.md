@@ -71,6 +71,11 @@ with a human developer making the decisions and reviewing the results.
    - One scenario (S4) assumes that `to` limits the *start* of a suggestion. This project decided that `to` limits the
      *end*, so S4 runs with a wider range and says so in a comment.
    - X1 adds the third provider through an ordinary configuration file, not through test code.
+   - The developer asked what the task itself says about the four decisions the scenarios depend on. Claude quoted
+     the task and the original spec: all four are left open. The only tension is the literal "Eindeutige Kennung"
+     versus the per-provider service id. The developer kept the per-provider id, and the justification was written
+     out in [ADR 0002](adr/0002-configuration-driven-catalog.md). The quotes are in
+     [`test-coverage.md`](test-coverage.md).
 
 ## What the human did
 

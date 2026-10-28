@@ -60,13 +60,18 @@ Each bug was planted in the production code, the suite was run, and the code was
 
 ### Decisions the scenarios depend on
 
-| Decision | Choice | Affects | Recorded in |
-|---|---|---|---|
-| Does `to` bound the start or the end of a suggestion? | **The end:** a suggestion must be finished by `to`. S4 therefore uses `to = 13:00` instead of 12:00, so that LAP starts from 10:30 can appear. | S1, S4 | [ADR 0004](adr/0004-time-model.md) |
-| Partial import or all-or-nothing? | **Partial, in file order:** valid rows are imported, every other row is reported with line, raw content and reason. | I3, I5 | [ADR 0005](adr/0005-csv-import-policy.md) |
-| Import entry point (the spec has none) | `POST /it-services/{serviceId}/appointment-imports` (multipart); the provider comes from the path. | I8 | [ADR 0006](adr/0006-api-deviations.md) |
-| Scope of `repairServiceId` | Unique **per provider** (= the code); always resolved together with the provider in the path. | B5, S9 | [ADR 0002](adr/0002-configuration-driven-catalog.md) |
-| Meaning of the inclusive period filter | Every appointment running at some point of `[from, to]`: `end > from AND start ≤ to`. | L2 | [ADR 0006](adr/0006-api-deviations.md) |
+**None of these is decided by the task.** Each quote below shows the room it leaves. The quotes are from
+[`task/README.de.md`](task/README.de.md) and the original `rest-api-spec.yml`. The last paragraph of the task
+explicitly allows documented deviations from the spec: *"Das bedeutete auch, das von der SPezifikation abgewichen
+werden kann, sollte in diesen Fällen für die Nachvollziehbarkeit gestattet sein."*
+
+| Decision | What the task / spec says | Our choice and why | Affects | ADR |
+|---|---|---|---|---|
+| Does `to` bound the start or the end of a suggestion? | Task, req. 3: *"Kunden sollen … verfügbare Termine erhalten."* Frontend: *"Eingabe eines gewünschten Zeitraums"*. Spec, `to`: *"Ende des Suchzeitraums (ISO 8601)"*. | **The end:** a suggestion must be finished by `to`. A customer who enters "08:00–12:00" means the appointment fits into that window, which is the natural reading of "end of the search period". S4 therefore uses `to = 13:00` instead of 12:00. | S1, S4 | [0004](adr/0004-time-model.md) |
+| Partial import or all-or-nothing, and in which order? | Task, req. 6: *"Der Importprozess muss unbekannte Leistungscodes und ungültige Datensätze erkennen und nachvollziehbar behandeln."* and *"Die Regeln gelten sowohl für neu gebuchte als auch für importierte Termine."* No order is mentioned. | **Partial, in file order:** valid rows are imported, every other row is reported with line, raw content and reason. One bad line shouldn't block hundreds of good ones, and the report says exactly what to fix. | I3, I5 | [0005](adr/0005-csv-import-policy.md) |
+| Import entry point | Task: *"Die Anwendung muss bestehende Termine aus CSV-Dateien importieren können."* and *"Die Zuordnung der CSV-Datei zum jeweiligen IT-Service-Anbieter muss beim Import eindeutig sein."* The spec has **no** import operation. | `POST /it-services/{serviceId}/appointment-imports` (multipart), a documented spec extension. The provider in the path makes the assignment unambiguous, and it is testable and usable from the frontend. | I8 | [0006](adr/0006-api-deviations.md) |
+| Scope of `repairServiceId` | Task, req. 2: a service has *"Eindeutige Kennung"* and *"Leistungscode"*, and *"Auch bei identischen Leistungscodes können unterschiedliche Bearbeitungszeiten gelten."* Task: *"Jede Dienstleistung besitzt einen eindeutigen Leistungscode"*. Spec example: `id: DIA`, `code: DIA`. | **Unique per provider** (id = code), exactly as in the spec example. It is always resolved together with the provider in the path, so it identifies exactly one service wherever it is used. The full reasoning is in ADR 0002. | B5, S9 | [0002](adr/0002-configuration-driven-catalog.md) |
+| Meaning of the inclusive period filter | Spec: `from` *"Beginn des Abfragezeitraums inklusive"*, `to` *"Ende des Abfragezeitraums inklusive"*. Task: *"Termine nach Zeitraum filtern können"*. | Every appointment running at some point of `[from, to]`: `end > from AND start ≤ to`. This is what staff mean by "appointments on Monday", including one that started before and is still running. | L2 | [0006](adr/0006-api-deviations.md) |
 
 The scenario list classes opening hours, past-date rejection and re-import deduplication as "not required by the
 task". This implementation has them anyway (documented deviations), and the scenario times were chosen so they don't

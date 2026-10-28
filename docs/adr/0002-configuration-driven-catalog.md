@@ -21,15 +21,52 @@ service code can have different durations at different providers (DIA: 30 min at
   them.
 - **Internal names:** the domain uses `Provider` and `ServiceOffering` (table `service_offering`). The spec names
   `it-service`/`serviceId` and `repairService`/`repairServiceId` appear only in controllers and DTOs (`api/`).
-- **Scope of `repairServiceId`:** the provider id is a readable key (`IT-MUELLER`, `CS-SCHNEIDER`), matching the spec
-  example. `repairServiceId` is the service code, so it is **unique per provider only**, exactly as in the spec
-  example (`id: DIA`, `code: DIA`).
-  - Every endpoint has the provider in its path, so a service is always looked up by `(providerId, code)` and never by
-    code alone.
-  - The CSV `SERVICE` column resolves the same way: the provider comes from the import request.
-  - The internal surrogate key (`service_offering.id`, a number) is not exposed.
-  - *Rejected alternative:* globally unique ids such as `MUELLER-DIA`. They would read more literally as a "unique
-    identifier", but they deviate from the spec example and duplicate information already in the path.
+- **Public identifiers:** the provider id is a readable key (`IT-MUELLER`, `CS-SCHNEIDER`), matching the spec
+  example. `repairServiceId` is the service code; see the next section for why.
+
+### Why `repairServiceId` is unique per provider
+
+**What the task and spec say.** The task lists, for every service, *"Eindeutige Kennung"* **and** *"Leistungscode"*
+as two separate fields (req. 2). It also says *"Jede Dienstleistung besitzt einen eindeutigen Leistungscode"* and
+*"Auch bei identischen Leistungscodes können unterschiedliche Bearbeitungszeiten gelten."* The spec's example for
+`repairService` is `id: DIA`, `code: DIA`.
+
+These pull in two directions:
+- Read literally, two separate fields suggest an identifier that is unique across all providers.
+- The spec example makes the identifier equal to the code. DIA exists at both providers (30 vs. 15 minutes), so the
+  code, and therefore the id, can only be unique *per provider*. The task's own "eindeutiger Leistungscode" is
+  likewise only true per provider.
+
+**Our reading.** A service is an offering *of one provider*. Its identity is the pair (provider, code).
+- In the API this pair is always complete, because every endpoint that takes a `repairServiceId` also carries the
+  provider in its path (`/it-services/{serviceId}/…`).
+- `DIA` under `/it-services/IT-MUELLER` therefore identifies exactly one service: Müller's 30-minute diagnosis.
+- The identifier is unique in every context where it can be used, which is what "eindeutig" requires of an
+  identifier.
+
+**Why this beats a globally unique public id:**
+1. **Spec compliance.** It matches the spec example exactly, and the spec is the API contract clients rely on.
+2. **One key everywhere.** It is the same key the legacy CSV uses (`SERVICE`). Imports, bookings and suggestions
+   resolve a service identically: `(provider from path, code)`.
+3. **Stable.** It is the same in every environment and after every restart. A generated key would differ per
+   database, so clients and tests could not hard-code it.
+4. **Readable.** `DIA` is meaningful in URLs, logs, error messages and the frontend.
+
+**The global identifier exists, internally.** `service_offering.id` (a numeric primary key) is globally unique and
+used for all foreign keys. It is deliberately not exposed, because no client needs to address a service without
+knowing its provider.
+
+**Safety net.** A service is never looked up by code alone. The only lookup is
+`ServiceOfferingRepository.findByProviderIdAndCode`. Asking Müller for Schneider's `VIR` returns 404, which is
+tested by the acceptance scenarios B5 and S9.
+
+**Rejected alternative:** a global public id such as `IT-MUELLER-DIA`.
+- It deviates from the spec example.
+- It repeats the provider that is already in the path.
+- The API would have to accept two forms (id and code) or break the legacy key.
+
+Should a future client need a global id, adding it is backwards-compatible: expose an extra field and keep accepting
+the code.
 
 ## Consequences
 

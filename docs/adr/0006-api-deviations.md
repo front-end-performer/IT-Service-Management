@@ -7,7 +7,7 @@ addition, and it is reflected in [`rest-api-spec.yml`](../../rest-api-spec.yml).
 
 | Change | Reason |
 |---|---|
-| `POST/GET /it-services/{serviceId}/appointment-imports[/{importId}]` (multipart upload, import report) | The task requires a CSV import with traceable error handling, and the spec has no endpoint for it. The provider in the path makes the assignment unambiguous. |
+| `POST/GET /it-services/{serviceId}/appointment-imports[/{importId}]` (multipart upload, import report) | The task requires *"Die Anwendung muss bestehende Termine aus CSV-Dateien importieren können"*, and the spec has no endpoint for it. The task permits deviations: *"…das von der SPezifikation abgewichen werden kann, sollte in diesen Fällen für die Nachvollziehbarkeit gestattet sein."* The provider in the path satisfies *"Die Zuordnung der CSV-Datei zum jeweiligen IT-Service-Anbieter muss beim Import eindeutig sein."* |
 | `appointment.source` (`BOOKED` / `IMPORTED`) | Staff can tell legacy appointments from new bookings. This is an additive, backwards-compatible field. |
 | Error bodies as RFC 9457 `application/problem+json` (`problem` definition) | The spec defines status codes but no error body. Clients and the UI need the reason, e.g. "No capacity left for LAP at …". |
 | `400` on `GET …/appointments` for an invalid `from`/`to` | Unparsable dates and `from > to` were otherwise undefined. |
@@ -32,6 +32,7 @@ fails the build if:
 
 (springdoc would generate OpenAPI 3, while the spec is Swagger 2.0.)
 
-**Inclusive filters:** `from` and `to` on the appointment list are inclusive and select every appointment that is at
-least partly running in the period (`end > from AND start ≤ to`). That's what staff usually mean by "appointments on
+**Inclusive filters:** the spec only says *"Beginn des Abfragezeitraums inklusive"* / *"Ende des Abfragezeitraums
+inklusive"*, not inclusive of what. `from` and `to` on the appointment list are inclusive and select every
+appointment that is at least partly running in the period (`end > from AND start ≤ to`). That's what staff usually mean by "appointments on
 Monday".

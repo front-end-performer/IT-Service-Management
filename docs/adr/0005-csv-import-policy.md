@@ -8,6 +8,14 @@ Legacy files have the format `KdnNr,APP_DATE,SERVICE` and contain no provider. E
 associated" with a provider, and "unknown service codes and invalid records" must be handled traceably. The two
 sample files have **swapped names**: `Computer-Service-Schneider.csv` contains Müller's services, and vice versa.
 
+*Task says:*
+- *"Der Importprozess muss unbekannte Leistungscodes und ungültige Datensätze erkennen und nachvollziehbar
+  behandeln."*
+- *"Die Regeln gelten sowohl für neu gebuchte als auch für importierte Termine."*
+
+The task does not say whether a file with bad rows is imported partially or not at all. It also does not say which
+row wins when rows conflict. Both are therefore our decisions (below).
+
 ## Decision
 
 - **Provider assignment:** the provider is part of the request (`POST /it-services/{id}/appointment-imports`, or the

@@ -37,6 +37,9 @@ The CSV dates carry a UTC offset (`2026-11-02T08:00Z`), and the API uses ISO-860
   - Validation at configuration time is therefore unnecessary, and the stored end time stays the real one.
 - **Suggestions:** the search rounds `from` up to the grid, steps in 15 minutes, keeps starts whose end is ≤ `to`,
   and loads the overlapping appointments once per search. The range is limited to 31 days.
+  - *Task says:* the spec only defines `to` as *"Ende des Suchzeitraums"*, and the task says *"Eingabe eines
+    gewünschten Zeitraums"*. Whether `to` limits the start or the end is left open.
+  - We read "end of the search period" as: the whole appointment lies within the period.
 - **Pure core:** the `scheduling` package has no Spring or JPA dependencies and is unit-tested in isolation.
 
 ## Consequences
