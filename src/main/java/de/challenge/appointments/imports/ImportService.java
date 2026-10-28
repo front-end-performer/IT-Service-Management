@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -59,18 +60,42 @@ public class ImportService {
         // File-level errors (header, structure) are raised before anything is written.
         List<Row> rows = CsvAppointmentParser.parse(csv);
 
-        // Committed first so appointments of every chunk can reference the batch.
+        // Committed first (status RUNNING) so appointments of every chunk can reference the batch.
         String batchId = transactions.execute(status ->
                 batches.save(new ImportBatch(providerId, fileName, clock.instant())).getId());
         for (int from = 0; from < rows.size(); from += chunkSize) {
             List<Row> chunk = rows.subList(from, Math.min(from + chunkSize, rows.size()));
-            transactions.executeWithoutResult(status -> importChunk(providerId, batchId, chunk));
+            try {
+                transactions.executeWithoutResult(status -> importChunk(providerId, batchId, chunk));
+            } catch (PessimisticLockingFailureException e) {
+                // Retryable: the caller gets 503; the record says where the import stopped.
+                markFailed(batchId, chunk, "the provider's schedule was busy (lock timeout)");
+                throw e;
+            } catch (RuntimeException e) {
+                log.error("Import {} into {} aborted", batchId, providerId, e);
+                String message = markFailed(batchId, chunk, "unexpected error");
+                throw new ImportFailedException(batchId, providerId, message, e);
+            }
         }
+        transactions.executeWithoutResult(status -> batches.findById(batchId).orElseThrow().complete());
 
         ImportBatch batch = transactions.execute(status -> batches.findByIdAndProviderId(batchId, providerId).orElseThrow());
         log.info("Import {} into {}: {} rows, {} imported, {} duplicates, {} rejected", batch.getId(),
                 providerId, batch.getTotalRows(), batch.getImported(), batch.getDuplicates(), batch.getRejected());
         return batch;
+    }
+
+    /**
+     * Records the abort on the import, in its own transaction (the failed chunk was rolled back).
+     * The message names the first line that was not imported; internal details stay in the log.
+     */
+    private String markFailed(String batchId, List<Row> failedChunk, String cause) {
+        long line = failedChunk.getFirst().lineNumber();
+        String message = ("Import aborted at line %d: %s. Rows before line %d were processed; "
+                + "re-importing the file is safe, already imported rows are skipped as duplicates.")
+                .formatted(line, cause, line);
+        transactions.executeWithoutResult(status -> batches.findById(batchId).orElseThrow().fail(message));
+        return message;
     }
 
     /** One transaction: takes the provider lock, checks and inserts the rows in file order, commits. */

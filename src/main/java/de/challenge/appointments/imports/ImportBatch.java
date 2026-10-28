@@ -3,6 +3,8 @@ package de.challenge.appointments.imports;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
@@ -42,6 +44,13 @@ public class ImportBatch {
     @Column(nullable = false)
     private int rejected;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ImportStatus status;
+
+    @Column(name = "failure_message")
+    private String failureMessage;
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "batch_id", nullable = false)
     @OrderBy("lineNumber")
@@ -55,6 +64,16 @@ public class ImportBatch {
         this.providerId = providerId;
         this.fileName = fileName;
         this.importedAt = importedAt;
+        this.status = ImportStatus.RUNNING;
+    }
+
+    void complete() {
+        status = ImportStatus.COMPLETED;
+    }
+
+    void fail(String message) {
+        status = ImportStatus.FAILED;
+        failureMessage = message.length() > 500 ? message.substring(0, 500) : message;
     }
 
     void recordImported() {
@@ -102,6 +121,14 @@ public class ImportBatch {
 
     public int getRejected() {
         return rejected;
+    }
+
+    public ImportStatus getStatus() {
+        return status;
+    }
+
+    public String getFailureMessage() {
+        return failureMessage;
     }
 
     public List<ImportRejection> getRejections() {

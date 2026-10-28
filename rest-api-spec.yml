@@ -293,8 +293,24 @@ paths:
           description: Erweiterung – Datei größer als 5 MB
           schema:
             $ref: '#/definitions/problem'
+        '500':
+          description: >
+            Erweiterung – Import nach unerwartetem Fehler abgebrochen. Der Import ist mit Status FAILED
+            gespeichert (Location, Property importId); bereits verarbeitete Zeilen bleiben importiert,
+            erneuter Import ist sicher.
+          headers:
+            Location:
+              type: string
+              description: URL des Importberichts
+          schema:
+            $ref: '#/definitions/problem'
         '503':
-          description: Erweiterung – Sperre des Anbieters nicht rechtzeitig erhalten; nach Retry-After erneut versuchen
+          description: >
+            Erweiterung – Sperre des Anbieters nicht rechtzeitig erhalten; nach Retry-After erneut versuchen.
+            Ein bereits begonnener Import wird mit Status FAILED gespeichert.
+          headers:
+            Retry-After:
+              type: integer
           schema:
             $ref: '#/definitions/problem'
     get:
@@ -509,7 +525,7 @@ definitions:
   importReport:
     type: object
     description: Erweiterung – Ergebnis eines CSV-Imports
-    required: [id, serviceId, importedAt, totalRows, imported, duplicates, rejected]
+    required: [id, serviceId, importedAt, status, totalRows, imported, duplicates, rejected]
     properties:
       id:
         type: string
@@ -524,6 +540,16 @@ definitions:
       importedAt:
         type: string
         format: date-time
+      status:
+        type: string
+        enum: [RUNNING, COMPLETED, FAILED]
+        description: >
+          RUNNING während der Verarbeitung; COMPLETED, wenn jede Zeile verarbeitet wurde;
+          FAILED bei Abbruch (siehe failureMessage). Zeilen bereits abgeschlossener Abschnitte bleiben importiert.
+      failureMessage:
+        type: string
+        description: Nur bei FAILED – ab welcher Zeile abgebrochen wurde
+        example: 'Import aborted at line 4: unexpected error. Rows before line 4 were processed; re-importing the file is safe, already imported rows are skipped as duplicates.'
       totalRows:
         type: integer
         description: Anzahl Datenzeilen (ohne Header)

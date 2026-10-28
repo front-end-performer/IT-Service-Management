@@ -7,6 +7,7 @@ import de.challenge.appointments.catalog.Provider;
 import de.challenge.appointments.catalog.ServiceOffering;
 import de.challenge.appointments.imports.ImportBatch;
 import de.challenge.appointments.imports.ImportRejection;
+import de.challenge.appointments.imports.ImportStatus;
 import de.challenge.appointments.imports.RejectionReason;
 import de.challenge.appointments.scheduling.OpeningHours;
 import jakarta.validation.constraints.NotBlank;
@@ -75,11 +76,13 @@ final class Dtos {
         }
     }
 
-    record ImportReportDto(String id, String serviceId, String fileName, Instant importedAt, int totalRows,
-                           int imported, int duplicates, int rejected, List<RejectionDto> rejections) {
+    record ImportReportDto(String id, String serviceId, String fileName, Instant importedAt, ImportStatus status,
+                           String failureMessage, int totalRows, int imported, int duplicates, int rejected,
+                           List<RejectionDto> rejections) {
         static ImportReportDto of(ImportBatch b, boolean withRejections) {
             return new ImportReportDto(b.getId(), b.getProviderId(), b.getFileName(), b.getImportedAt(),
-                    b.getTotalRows(), b.getImported(), b.getDuplicates(), b.getRejected(),
+                    b.getStatus(), b.getFailureMessage(), b.getTotalRows(), b.getImported(), b.getDuplicates(),
+                    b.getRejected(),
                     withRejections ? b.getRejections().stream().map(RejectionDto::of).toList() : null);
         }
     }
