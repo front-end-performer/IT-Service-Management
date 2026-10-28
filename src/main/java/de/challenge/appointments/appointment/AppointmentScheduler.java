@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * The single place where appointments are written. Shared by booking and CSV import so that
  * both obey exactly the same grid, duplicate and capacity rules.
  *
- * <p>Callers must hold the provider lock ({@code ProviderRepository#findByIdForUpdate}) in the
+ * <p>Callers must hold the provider lock ({@code CatalogService#lockProvider}) in the
  * surrounding transaction; otherwise two transactions could both see free capacity.
  */
 @Component

@@ -1,12 +1,10 @@
 package de.challenge.appointments.appointment;
 
+import de.challenge.appointments.catalog.CatalogService;
 import de.challenge.appointments.catalog.Provider;
-import de.challenge.appointments.catalog.ProviderRepository;
 import de.challenge.appointments.catalog.ServiceOffering;
-import de.challenge.appointments.catalog.ServiceOfferingRepository;
 import de.challenge.appointments.common.ConflictException;
 import de.challenge.appointments.common.InvalidRequestException;
-import de.challenge.appointments.common.NotFoundException;
 import java.time.Clock;
 import java.time.Instant;
 import org.springframework.stereotype.Service;
@@ -15,15 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BookingService {
 
-    private final ProviderRepository providers;
-    private final ServiceOfferingRepository services;
+    private final CatalogService catalog;
     private final AppointmentScheduler scheduler;
     private final Clock clock;
 
-    BookingService(ProviderRepository providers, ServiceOfferingRepository services, AppointmentScheduler scheduler,
-                   Clock clock) {
-        this.providers = providers;
-        this.services = services;
+    BookingService(CatalogService catalog, AppointmentScheduler scheduler, Clock clock) {
+        this.catalog = catalog;
         this.scheduler = scheduler;
         this.clock = clock;
     }
@@ -34,11 +29,8 @@ public class BookingService {
      */
     @Transactional
     public Appointment book(String providerId, String serviceCode, String customerNumber, Instant start) {
-        Provider provider = providers.findByIdForUpdate(providerId)
-                .orElseThrow(() -> new NotFoundException("IT service provider '%s' not found".formatted(providerId)));
-        ServiceOffering service = services.findByProviderIdAndCode(provider.getId(), serviceCode)
-                .orElseThrow(() -> new NotFoundException(
-                        "Service '%s' is not offered by '%s'".formatted(serviceCode, providerId)));
+        Provider provider = catalog.lockProvider(providerId);
+        ServiceOffering service = catalog.service(providerId, serviceCode);
 
         // Only new bookings must lie in the future; imported legacy appointments may be historic.
         if (start.isBefore(clock.instant())) {

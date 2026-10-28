@@ -2,11 +2,8 @@ package de.challenge.appointments.api;
 
 import de.challenge.appointments.api.Dtos.ItServiceDto;
 import de.challenge.appointments.api.Dtos.RepairServiceDto;
-import de.challenge.appointments.catalog.ProviderRepository;
-import de.challenge.appointments.catalog.ServiceOfferingRepository;
-import de.challenge.appointments.common.NotFoundException;
+import de.challenge.appointments.catalog.CatalogService;
 import java.util.List;
-import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,34 +14,24 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/it-services")
 class ItServiceController {
 
-    private final ProviderRepository providers;
-    private final ServiceOfferingRepository services;
+    private final CatalogService catalog;
 
-    ItServiceController(ProviderRepository providers, ServiceOfferingRepository services) {
-        this.providers = providers;
-        this.services = services;
+    ItServiceController(CatalogService catalog) {
+        this.catalog = catalog;
     }
 
     @GetMapping
     List<ItServiceDto> getITServices() {
-        return providers.findAll(Sort.by("name")).stream().map(ItServiceDto::of).toList();
+        return catalog.providers().stream().map(ItServiceDto::of).toList();
     }
 
     @GetMapping("/{serviceId}")
     ItServiceDto getITService(@PathVariable String serviceId) {
-        return providers.findById(serviceId).map(ItServiceDto::of)
-                .orElseThrow(() -> notFound(serviceId));
+        return ItServiceDto.of(catalog.provider(serviceId));
     }
 
     @GetMapping("/{serviceId}/services")
     List<RepairServiceDto> getRepairServices(@PathVariable String serviceId) {
-        if (!providers.existsById(serviceId)) {
-            throw notFound(serviceId);
-        }
-        return services.findByProviderIdOrderByCode(serviceId).stream().map(RepairServiceDto::of).toList();
-    }
-
-    private static NotFoundException notFound(String serviceId) {
-        return new NotFoundException("IT service provider '%s' not found".formatted(serviceId));
+        return catalog.services(serviceId).stream().map(RepairServiceDto::of).toList();
     }
 }

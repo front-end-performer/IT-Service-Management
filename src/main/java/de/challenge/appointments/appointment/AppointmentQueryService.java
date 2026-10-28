@@ -1,6 +1,6 @@
 package de.challenge.appointments.appointment;
 
-import de.challenge.appointments.catalog.ProviderRepository;
+import de.challenge.appointments.catalog.CatalogService;
 import de.challenge.appointments.common.InvalidRequestException;
 import de.challenge.appointments.common.NotFoundException;
 import java.time.Instant;
@@ -23,18 +23,18 @@ public class AppointmentQueryService {
     public record Filter(Instant from, Instant to, String serviceCode, String customerNumber) {
     }
 
-    private final ProviderRepository providers;
+    private final CatalogService catalog;
     private final AppointmentRepository appointments;
 
-    AppointmentQueryService(ProviderRepository providers, AppointmentRepository appointments) {
-        this.providers = providers;
+    AppointmentQueryService(CatalogService catalog, AppointmentRepository appointments) {
+        this.catalog = catalog;
         this.appointments = appointments;
     }
 
     /** One page of the provider's appointments matching the filter, ordered by start. */
     @Transactional(readOnly = true)
     public Page<Appointment> list(String providerId, Filter filter, int page, int size) {
-        requireProvider(providerId);
+        catalog.requireProvider(providerId);
         if (filter.from() != null && filter.to() != null && filter.from().isAfter(filter.to())) {
             throw new InvalidRequestException("'from' must not be after 'to'");
         }
@@ -57,14 +57,8 @@ public class AppointmentQueryService {
 
     @Transactional(readOnly = true)
     public Appointment get(String providerId, String appointmentId) {
-        requireProvider(providerId);
+        catalog.requireProvider(providerId);
         return appointments.findByIdAndProviderId(appointmentId, providerId)
                 .orElseThrow(() -> new NotFoundException("Appointment '%s' not found".formatted(appointmentId)));
-    }
-
-    private void requireProvider(String providerId) {
-        if (!providers.existsById(providerId)) {
-            throw new NotFoundException("IT service provider '%s' not found".formatted(providerId));
-        }
     }
 }

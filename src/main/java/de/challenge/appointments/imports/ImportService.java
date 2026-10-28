@@ -2,10 +2,9 @@ package de.challenge.appointments.imports;
 
 import de.challenge.appointments.appointment.AppointmentScheduler;
 import de.challenge.appointments.appointment.AppointmentSource;
+import de.challenge.appointments.catalog.CatalogService;
 import de.challenge.appointments.catalog.Provider;
-import de.challenge.appointments.catalog.ProviderRepository;
 import de.challenge.appointments.catalog.ServiceOffering;
-import de.challenge.appointments.catalog.ServiceOfferingRepository;
 import de.challenge.appointments.common.NotFoundException;
 import de.challenge.appointments.imports.CsvAppointmentParser.InvalidRow;
 import de.challenge.appointments.imports.CsvAppointmentParser.Row;
@@ -38,19 +37,16 @@ public class ImportService {
 
     private static final Logger log = LoggerFactory.getLogger(ImportService.class);
 
-    private final ProviderRepository providers;
-    private final ServiceOfferingRepository services;
+    private final CatalogService catalog;
     private final AppointmentScheduler scheduler;
     private final ImportBatchRepository batches;
     private final Clock clock;
     private final TransactionTemplate transactions;
     private final int chunkSize;
 
-    ImportService(ProviderRepository providers, ServiceOfferingRepository services, AppointmentScheduler scheduler,
-                  ImportBatchRepository batches, Clock clock, TransactionTemplate transactions,
-                  @Value("${appointments.import-chunk-size}") int chunkSize) {
-        this.providers = providers;
-        this.services = services;
+    ImportService(CatalogService catalog, AppointmentScheduler scheduler, ImportBatchRepository batches, Clock clock,
+                  TransactionTemplate transactions, @Value("${appointments.import-chunk-size}") int chunkSize) {
+        this.catalog = catalog;
         this.scheduler = scheduler;
         this.batches = batches;
         this.clock = clock;
@@ -59,9 +55,7 @@ public class ImportService {
     }
 
     public ImportBatch importCsv(String providerId, String fileName, Reader csv) throws IOException {
-        if (!providers.existsById(providerId)) {
-            throw new NotFoundException("IT service provider '%s' not found".formatted(providerId));
-        }
+        catalog.requireProvider(providerId);
         // File-level errors (header, structure) are raised before anything is written.
         List<Row> rows = CsvAppointmentParser.parse(csv);
 
@@ -81,8 +75,8 @@ public class ImportService {
 
     /** One transaction: takes the provider lock, checks and inserts the rows in file order, commits. */
     private void importChunk(String providerId, String batchId, List<Row> chunk) {
-        Provider provider = providers.findByIdForUpdate(providerId).orElseThrow();
-        Map<String, ServiceOffering> servicesByCode = services.findByProviderIdOrderByCode(provider.getId()).stream()
+        Provider provider = catalog.lockProvider(providerId);
+        Map<String, ServiceOffering> servicesByCode = catalog.services(provider.getId()).stream()
                 .collect(Collectors.toMap(ServiceOffering::getCode, Function.identity(), (a, b) -> a, TreeMap::new));
         ImportBatch batch = batches.findById(batchId).orElseThrow();
         for (Row row : chunk) {
@@ -121,9 +115,7 @@ public class ImportService {
 
     @Transactional(readOnly = true)
     public List<ImportBatch> list(String providerId) {
-        if (!providers.existsById(providerId)) {
-            throw new NotFoundException("IT service provider '%s' not found".formatted(providerId));
-        }
+        catalog.requireProvider(providerId);
         return batches.findByProviderIdOrderByImportedAtDesc(providerId);
     }
 
