@@ -1,6 +1,6 @@
 package de.challenge.appointments.appointment;
 
-import de.challenge.appointments.catalog.RepairService;
+import de.challenge.appointments.catalog.ServiceOffering;
 import de.challenge.appointments.scheduling.CapacityCalculator;
 import de.challenge.appointments.scheduling.TimeGrid;
 import de.challenge.appointments.scheduling.TimeSlot;
@@ -35,13 +35,13 @@ public class AppointmentScheduler {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public Result schedule(RepairService service, String customerNumber, Instant start,
+    public Result schedule(ServiceOffering service, String customerNumber, Instant start,
                            AppointmentSource source, String importBatchId) {
         if (!TimeGrid.isAligned(start)) {
             return new Result(Outcome.OFF_GRID, null);
         }
         String providerId = service.getProvider().getId();
-        if (appointments.existsByProviderIdAndRepairServiceIdAndCustomerNumberAndStart(
+        if (appointments.existsByProviderIdAndServiceOfferingIdAndCustomerNumberAndStart(
                 providerId, service.getId(), customerNumber, start)) {
             return new Result(Outcome.DUPLICATE, null);
         }

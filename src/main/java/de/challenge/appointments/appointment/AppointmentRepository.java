@@ -19,13 +19,13 @@ public interface AppointmentRepository extends JpaRepository<Appointment, String
             """)
     List<Appointment> findOverlapping(String providerId, Instant from, Instant to);
 
-    boolean existsByProviderIdAndRepairServiceIdAndCustomerNumberAndStart(
+    boolean existsByProviderIdAndServiceOfferingIdAndCustomerNumberAndStart(
             String providerId, Long repairServiceId, String customerNumber, Instant start);
 
-    @EntityGraph(attributePaths = {"provider", "repairService"})
+    @EntityGraph(attributePaths = {"provider", "serviceOffering"})
     Optional<Appointment> findByIdAndProviderId(String id, String providerId);
 
     @Override
-    @EntityGraph(attributePaths = {"provider", "repairService"})
+    @EntityGraph(attributePaths = {"provider", "serviceOffering"})
     List<Appointment> findAll(Specification<Appointment> spec, Sort sort);
 }

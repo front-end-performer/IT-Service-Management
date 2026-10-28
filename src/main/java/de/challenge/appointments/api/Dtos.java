@@ -4,7 +4,7 @@ import de.challenge.appointments.appointment.Appointment;
 import de.challenge.appointments.appointment.AppointmentSource;
 import de.challenge.appointments.appointment.SuggestionService.Suggestion;
 import de.challenge.appointments.catalog.Provider;
-import de.challenge.appointments.catalog.RepairService;
+import de.challenge.appointments.catalog.ServiceOffering;
 import de.challenge.appointments.imports.ImportBatch;
 import de.challenge.appointments.imports.ImportRejection;
 import de.challenge.appointments.imports.RejectionReason;
@@ -31,7 +31,7 @@ final class Dtos {
     }
 
     record RepairServiceDto(String id, String code, String name, int durationMinutes) {
-        static RepairServiceDto of(RepairService service) {
+        static RepairServiceDto of(ServiceOffering service) {
             // The code is unique per provider and stable across restarts, so it doubles as the public id.
             return new RepairServiceDto(service.getCode(), service.getCode(), service.getName(),
                     service.getDurationMinutes());
@@ -45,7 +45,7 @@ final class Dtos {
         static AppointmentDto of(Appointment a) {
             return new AppointmentDto(a.getId(), a.getCustomerNumber(), a.getStart(), a.getEnd(),
                     a.getProvider().getId(), a.getProvider().getName(),
-                    a.getRepairService().getCode(), a.getRepairService().getName(), a.getSource());
+                    a.getServiceOffering().getCode(), a.getServiceOffering().getName(), a.getSource());
         }
     }
 

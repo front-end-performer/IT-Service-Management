@@ -2,8 +2,8 @@ package de.challenge.appointments.appointment;
 
 import de.challenge.appointments.catalog.Provider;
 import de.challenge.appointments.catalog.ProviderRepository;
-import de.challenge.appointments.catalog.RepairService;
-import de.challenge.appointments.catalog.RepairServiceRepository;
+import de.challenge.appointments.catalog.ServiceOffering;
+import de.challenge.appointments.catalog.ServiceOfferingRepository;
 import de.challenge.appointments.common.InvalidRequestException;
 import de.challenge.appointments.common.NotFoundException;
 import de.challenge.appointments.scheduling.SlotFinder;
@@ -25,11 +25,11 @@ public class SuggestionService {
     static final Duration MAX_RANGE = Duration.ofDays(31);
 
     private final ProviderRepository providers;
-    private final RepairServiceRepository services;
+    private final ServiceOfferingRepository services;
     private final AppointmentRepository appointments;
     private final Clock clock;
 
-    SuggestionService(ProviderRepository providers, RepairServiceRepository services,
+    SuggestionService(ProviderRepository providers, ServiceOfferingRepository services,
                       AppointmentRepository appointments, Clock clock) {
         this.providers = providers;
         this.services = services;
@@ -37,7 +37,7 @@ public class SuggestionService {
         this.clock = clock;
     }
 
-    public record Suggestion(TimeSlot slot, Provider provider, RepairService service) {
+    public record Suggestion(TimeSlot slot, Provider provider, ServiceOffering service) {
     }
 
     @Transactional(readOnly = true)
@@ -50,7 +50,7 @@ public class SuggestionService {
         }
         Provider provider = providers.findById(providerId)
                 .orElseThrow(() -> new NotFoundException("IT service provider '%s' not found".formatted(providerId)));
-        RepairService service = services.findByProviderIdAndCode(providerId, serviceCode)
+        ServiceOffering service = services.findByProviderIdAndCode(providerId, serviceCode)
                 .orElseThrow(() -> new NotFoundException(
                         "Service '%s' is not offered by '%s'".formatted(serviceCode, providerId)));
 

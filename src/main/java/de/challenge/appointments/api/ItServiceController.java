@@ -3,7 +3,7 @@ package de.challenge.appointments.api;
 import de.challenge.appointments.api.Dtos.ItServiceDto;
 import de.challenge.appointments.api.Dtos.RepairServiceDto;
 import de.challenge.appointments.catalog.ProviderRepository;
-import de.challenge.appointments.catalog.RepairServiceRepository;
+import de.challenge.appointments.catalog.ServiceOfferingRepository;
 import de.challenge.appointments.common.NotFoundException;
 import java.util.List;
 import org.springframework.data.domain.Sort;
@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 class ItServiceController {
 
     private final ProviderRepository providers;
-    private final RepairServiceRepository services;
+    private final ServiceOfferingRepository services;
 
-    ItServiceController(ProviderRepository providers, RepairServiceRepository services) {
+    ItServiceController(ProviderRepository providers, ServiceOfferingRepository services) {
         this.providers = providers;
         this.services = services;
     }

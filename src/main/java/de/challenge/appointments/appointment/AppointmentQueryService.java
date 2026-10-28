@@ -44,7 +44,7 @@ public class AppointmentQueryService {
             specs.add((root, query, cb) -> cb.lessThanOrEqualTo(root.get("start"), filter.to()));
         }
         if (filter.serviceCode() != null) {
-            specs.add((root, query, cb) -> cb.equal(root.get("repairService").get("code"), filter.serviceCode()));
+            specs.add((root, query, cb) -> cb.equal(root.get("serviceOffering").get("code"), filter.serviceCode()));
         }
         if (filter.customerNumber() != null) {
             specs.add((root, query, cb) -> cb.equal(root.get("customerNumber"), filter.customerNumber()));

@@ -12,12 +12,12 @@ import jakarta.persistence.Table;
 import java.time.Duration;
 
 /**
- * A service offered by one provider. The same code (e.g. DIA) may exist at several
+ * A service offered by one provider ("repairService" in the REST API; the mapping lives in the DTO layer only). The same code (e.g. DIA) may exist at several
  * providers with different durations, so the code is only unique per provider.
  */
 @Entity
-@Table(name = "repair_service")
-public class RepairService {
+@Table(name = "service_offering")
+public class ServiceOffering {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,10 +36,10 @@ public class RepairService {
     @Column(name = "duration_minutes", nullable = false)
     private int durationMinutes;
 
-    protected RepairService() {
+    protected ServiceOffering() {
     }
 
-    public RepairService(Provider provider, String code, String name, int durationMinutes) {
+    public ServiceOffering(Provider provider, String code, String name, int durationMinutes) {
         this.provider = provider;
         this.code = code;
         update(name, durationMinutes);

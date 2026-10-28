@@ -1,7 +1,7 @@
 package de.challenge.appointments.appointment;
 
 import de.challenge.appointments.catalog.Provider;
-import de.challenge.appointments.catalog.RepairService;
+import de.challenge.appointments.catalog.ServiceOffering;
 import de.challenge.appointments.scheduling.TimeSlot;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,8 +27,8 @@ public class Appointment {
     private Provider provider;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "repair_service_id")
-    private RepairService repairService;
+    @JoinColumn(name = "service_offering_id")
+    private ServiceOffering serviceOffering;
 
     @Column(name = "customer_number", nullable = false)
     private String customerNumber;
@@ -53,14 +53,14 @@ public class Appointment {
     protected Appointment() {
     }
 
-    Appointment(RepairService repairService, String customerNumber, Instant start,
+    Appointment(ServiceOffering serviceOffering, String customerNumber, Instant start,
                 AppointmentSource source, String importBatchId, Instant createdAt) {
         this.id = UUID.randomUUID().toString();
-        this.provider = repairService.getProvider();
-        this.repairService = repairService;
+        this.provider = serviceOffering.getProvider();
+        this.serviceOffering = serviceOffering;
         this.customerNumber = customerNumber;
         this.start = start;
-        this.end = start.plus(repairService.getDuration());
+        this.end = start.plus(serviceOffering.getDuration());
         this.source = source;
         this.importBatchId = importBatchId;
         this.createdAt = createdAt;
@@ -78,8 +78,8 @@ public class Appointment {
         return provider;
     }
 
-    public RepairService getRepairService() {
-        return repairService;
+    public ServiceOffering getServiceOffering() {
+        return serviceOffering;
     }
 
     public String getCustomerNumber() {

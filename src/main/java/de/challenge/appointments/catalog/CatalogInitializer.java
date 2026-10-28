@@ -19,9 +19,9 @@ class CatalogInitializer implements ApplicationRunner {
 
     private final CatalogProperties properties;
     private final ProviderRepository providers;
-    private final RepairServiceRepository services;
+    private final ServiceOfferingRepository services;
 
-    CatalogInitializer(CatalogProperties properties, ProviderRepository providers, RepairServiceRepository services) {
+    CatalogInitializer(CatalogProperties properties, ProviderRepository providers, ServiceOfferingRepository services) {
         this.properties = properties;
         this.providers = providers;
         this.services = services;
@@ -42,7 +42,7 @@ class CatalogInitializer implements ApplicationRunner {
                 services.findByProviderIdAndCode(provider.getId(), serviceConfig.code())
                         .ifPresentOrElse(
                                 existing -> existing.update(serviceConfig.name(), serviceConfig.durationMinutes()),
-                                () -> services.save(new RepairService(provider, serviceConfig.code(),
+                                () -> services.save(new ServiceOffering(provider, serviceConfig.code(),
                                         serviceConfig.name(), serviceConfig.durationMinutes())));
             }
             log.info("Catalog: provider {} (capacity {}) with {} services",

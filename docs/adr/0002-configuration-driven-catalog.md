@@ -11,7 +11,7 @@ service code can have different durations at different providers (DIA: 30 min at
 
 - **Data model:**
   - `provider (id, name, capacity)`
-  - `repair_service (id, provider_id, code, name, duration_minutes)` with `UNIQUE(provider_id, code)`. A service
+  - `service_offering (id, provider_id, code, name, duration_minutes)` with `UNIQUE(provider_id, code)`. A service
     belongs to exactly one provider, so durations can differ per provider and there is no shared global service
     table.
   - `appointment` references both, and stores the computed `end_at` (see 0004).
@@ -19,9 +19,17 @@ service code can have different durations at different providers (DIA: 30 min at
   record. `CatalogInitializer` upserts it into the database on every start: it inserts new entries and updates names,
   capacities and durations. Entries removed from the configuration are **kept**, because appointments may reference
   them.
-- **Public identifiers:** the provider id is a readable key (`IT-MUELLER`, `CS-SCHNEIDER`), matching the spec example.
-  The service's public id is its code, which is unique per provider. It is the same key the legacy CSV uses, so
-  `repairServiceId` from the API and `SERVICE` from the CSV resolve the same way.
+- **Internal names:** the domain uses `Provider` and `ServiceOffering` (table `service_offering`). The spec names
+  `it-service`/`serviceId` and `repairService`/`repairServiceId` appear only in controllers and DTOs (`api/`).
+- **Scope of `repairServiceId`:** the provider id is a readable key (`IT-MUELLER`, `CS-SCHNEIDER`), matching the spec
+  example. `repairServiceId` is the service code, so it is **unique per provider only**, exactly as in the spec
+  example (`id: DIA`, `code: DIA`).
+  - Every endpoint has the provider in its path, so a service is always looked up by `(providerId, code)` and never by
+    code alone.
+  - The CSV `SERVICE` column resolves the same way: the provider comes from the import request.
+  - The internal surrogate key (`service_offering.id`, a number) is not exposed.
+  - *Rejected alternative:* globally unique ids such as `MUELLER-DIA`. They would read more literally as a "unique
+    identifier", but they deviate from the spec example and duplicate information already in the path.
 
 ## Consequences
 

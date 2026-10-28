@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/** An IT service provider ("IT-Service" in the REST API) with its concurrent capacity. */
+/** An IT service provider ("it-service" in the REST API; the mapping lives in the DTO layer only). */
 @Entity
 @Table(name = "provider")
 public class Provider {

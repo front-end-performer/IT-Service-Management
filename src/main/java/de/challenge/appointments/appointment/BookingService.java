@@ -2,8 +2,8 @@ package de.challenge.appointments.appointment;
 
 import de.challenge.appointments.catalog.Provider;
 import de.challenge.appointments.catalog.ProviderRepository;
-import de.challenge.appointments.catalog.RepairService;
-import de.challenge.appointments.catalog.RepairServiceRepository;
+import de.challenge.appointments.catalog.ServiceOffering;
+import de.challenge.appointments.catalog.ServiceOfferingRepository;
 import de.challenge.appointments.common.ConflictException;
 import de.challenge.appointments.common.InvalidRequestException;
 import de.challenge.appointments.common.NotFoundException;
@@ -16,11 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class BookingService {
 
     private final ProviderRepository providers;
-    private final RepairServiceRepository services;
+    private final ServiceOfferingRepository services;
     private final AppointmentScheduler scheduler;
     private final Clock clock;
 
-    BookingService(ProviderRepository providers, RepairServiceRepository services, AppointmentScheduler scheduler,
+    BookingService(ProviderRepository providers, ServiceOfferingRepository services, AppointmentScheduler scheduler,
                    Clock clock) {
         this.providers = providers;
         this.services = services;
@@ -36,7 +36,7 @@ public class BookingService {
     public Appointment book(String providerId, String serviceCode, String customerNumber, Instant start) {
         Provider provider = providers.findByIdForUpdate(providerId)
                 .orElseThrow(() -> new NotFoundException("IT service provider '%s' not found".formatted(providerId)));
-        RepairService service = services.findByProviderIdAndCode(provider.getId(), serviceCode)
+        ServiceOffering service = services.findByProviderIdAndCode(provider.getId(), serviceCode)
                 .orElseThrow(() -> new NotFoundException(
                         "Service '%s' is not offered by '%s'".formatted(serviceCode, providerId)));
 

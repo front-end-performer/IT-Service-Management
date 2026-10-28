@@ -4,8 +4,8 @@ import de.challenge.appointments.appointment.AppointmentScheduler;
 import de.challenge.appointments.appointment.AppointmentSource;
 import de.challenge.appointments.catalog.Provider;
 import de.challenge.appointments.catalog.ProviderRepository;
-import de.challenge.appointments.catalog.RepairService;
-import de.challenge.appointments.catalog.RepairServiceRepository;
+import de.challenge.appointments.catalog.ServiceOffering;
+import de.challenge.appointments.catalog.ServiceOfferingRepository;
 import de.challenge.appointments.common.NotFoundException;
 import de.challenge.appointments.imports.CsvAppointmentParser.InvalidRow;
 import de.challenge.appointments.imports.CsvAppointmentParser.Row;
@@ -34,12 +34,12 @@ public class ImportService {
     private static final Logger log = LoggerFactory.getLogger(ImportService.class);
 
     private final ProviderRepository providers;
-    private final RepairServiceRepository services;
+    private final ServiceOfferingRepository services;
     private final AppointmentScheduler scheduler;
     private final ImportBatchRepository batches;
     private final Clock clock;
 
-    ImportService(ProviderRepository providers, RepairServiceRepository services, AppointmentScheduler scheduler,
+    ImportService(ProviderRepository providers, ServiceOfferingRepository services, AppointmentScheduler scheduler,
                   ImportBatchRepository batches, Clock clock) {
         this.providers = providers;
         this.services = services;
@@ -53,8 +53,8 @@ public class ImportService {
         Provider provider = providers.findByIdForUpdate(providerId)
                 .orElseThrow(() -> new NotFoundException("IT service provider '%s' not found".formatted(providerId)));
         List<Row> rows = CsvAppointmentParser.parse(csv);
-        Map<String, RepairService> servicesByCode = services.findByProviderIdOrderByCode(provider.getId()).stream()
-                .collect(Collectors.toMap(RepairService::getCode, Function.identity(), (a, b) -> a, TreeMap::new));
+        Map<String, ServiceOffering> servicesByCode = services.findByProviderIdOrderByCode(provider.getId()).stream()
+                .collect(Collectors.toMap(ServiceOffering::getCode, Function.identity(), (a, b) -> a, TreeMap::new));
 
         // Saved first so appointments can reference the batch.
         ImportBatch batch = batches.save(new ImportBatch(provider.getId(), fileName, clock.instant()));
@@ -70,8 +70,8 @@ public class ImportService {
         return batch;
     }
 
-    private void importRow(ImportBatch batch, ValidRow row, Map<String, RepairService> servicesByCode) {
-        RepairService service = servicesByCode.get(row.serviceCode());
+    private void importRow(ImportBatch batch, ValidRow row, Map<String, ServiceOffering> servicesByCode) {
+        ServiceOffering service = servicesByCode.get(row.serviceCode());
         if (service == null) {
             batch.recordNotImported(row.lineNumber(), row.rawLine(), RejectionReason.UNKNOWN_SERVICE_CODE,
                     "Service code '%s' is not offered by %s (offered: %s)".formatted(row.serviceCode(),

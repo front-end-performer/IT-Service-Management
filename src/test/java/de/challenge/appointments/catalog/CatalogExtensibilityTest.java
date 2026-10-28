@@ -29,7 +29,7 @@ class CatalogExtensibilityTest extends IntegrationTest {
     @Autowired
     private ProviderRepository providers;
     @Autowired
-    private RepairServiceRepository services;
+    private ServiceOfferingRepository services;
     @Autowired
     private BookingService booking;
     @Autowired
@@ -43,7 +43,7 @@ class CatalogExtensibilityTest extends IntegrationTest {
     @AfterEach
     void restoreConfiguredCatalog() {
         jdbc.update("delete from appointment");
-        jdbc.update("delete from repair_service where provider_id = ?", NEW_PROVIDER);
+        jdbc.update("delete from service_offering where provider_id = ?", NEW_PROVIDER);
         jdbc.update("delete from provider where id = ?", NEW_PROVIDER);
         applyCatalog(configured);
     }

@@ -17,7 +17,7 @@ addition, and it is reflected in [`rest-api-spec.yml`](../../rest-api-spec.yml).
 | `Location` header on `201` | Standard REST practice. The body is unchanged. |
 
 **Naming:** the spec calls the provider `serviceId` and the provider's service `repairServiceId`. This is kept for
-compatibility. Internally the code uses `Provider` and `RepairService`, and the DTO mapping is the only place where the
+compatibility. Internally the code uses `Provider` and `ServiceOffering`, and the DTO mapping is the only place where the
 two vocabularies meet (`api/Dtos.java`).
 
 **Time formats:** inputs accept seconds or no seconds, and any offset (`2026-11-02T09:00:00Z`, `2026-11-02T08:00Z`,
