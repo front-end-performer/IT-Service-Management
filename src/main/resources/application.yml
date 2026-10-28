@@ -5,6 +5,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/icares
     username: icares
     password: icares
+    hikari:
+      # Bound the wait for the provider row lock (ADR 0003); identical semantics on H2, see application-h2.yml.
+      connection-init-sql: SET lock_timeout = '${appointments.lock-timeout-ms}ms'
   jpa:
     open-in-view: false
     hibernate:
@@ -15,6 +18,10 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
+
+appointments:
+  # How long a booking/import waits for another transaction on the same provider before answering 503.
+  lock-timeout-ms: 10000
 
 server:
   address: 127.0.0.1

@@ -155,6 +155,15 @@ paths:
           description: IT-Service-Anbieter oder Dienstleistung nicht gefunden
         '409':
           description: Termin nicht verfügbar oder Kapazität ausgeschöpft
+        '503':
+          description: >
+            Erweiterung: Sperre des Anbieters nicht rechtzeitig erhalten (parallele Änderung).
+            Keine Aussage über Verfügbarkeit; nach Retry-After erneut versuchen.
+          headers:
+            Retry-After:
+              type: integer
+          schema:
+            $ref: '#/definitions/problem'
 
   /it-services/{serviceId}/appointments/{appointmentId}:
     get:
@@ -254,6 +263,10 @@ paths:
             $ref: '#/definitions/problem'
         '404':
           description: IT-Service-Anbieter nicht gefunden
+        '503':
+          description: Sperre des Anbieters nicht rechtzeitig erhalten; nach Retry-After erneut versuchen
+          schema:
+            $ref: '#/definitions/problem'
     get:
       tags:
         - appointment-imports

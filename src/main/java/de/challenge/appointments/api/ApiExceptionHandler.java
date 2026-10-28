@@ -4,6 +4,9 @@ import de.challenge.appointments.common.ConflictException;
 import de.challenge.appointments.common.InvalidRequestException;
 import de.challenge.appointments.common.NotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -43,6 +46,18 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail integrity(DataIntegrityViolationException e) {
         return problem(HttpStatus.CONFLICT, "Conflict", "The request conflicts with existing data");
+    }
+
+    /**
+     * The provider lock could not be acquired within {@code appointments.lock-timeout-ms}. Says nothing
+     * about capacity – the slot may well be free – so 503 with a retry hint rather than 409.
+     */
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    ResponseEntity<ProblemDetail> lockTimeout(PessimisticLockingFailureException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(HttpHeaders.RETRY_AFTER, "1")
+                .body(problem(HttpStatus.SERVICE_UNAVAILABLE, "Busy",
+                        "The provider's schedule is being changed by another request; please retry"));
     }
 
     private static ProblemDetail problem(HttpStatus status, String title, String detail) {
