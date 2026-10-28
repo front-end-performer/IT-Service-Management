@@ -1,36 +1,37 @@
-# 0001 – Technology stack
+# 0001 – Technologie-Stack
 
-**Status:** accepted
+**Status:** angenommen
 
-## Context
+## Kontext
 
-The task requires a Java backend packaged as an executable JAR, PostgreSQL or H2, and an Ext JS frontend. The provided
-`docker-compose.yml` uses `postgres:11-alpine`.
+Die Aufgabe verlangt ein Java-Backend als ausführbare JAR, PostgreSQL oder H2 und ein Ext-JS-Frontend. Die
+mitgelieferte `docker-compose.yml` verwendet `postgres:11-alpine`.
 
-## Decision
+## Entscheidung
 
-- **Backend:** Java 21 (LTS) with Spring Boot 4.1 (the current stable release; Initializr no longer offers 3.x),
-  Spring Data JPA/Hibernate, and Flyway for the schema. `ddl-auto=validate`, so Hibernate only checks the mapping.
-- **Build:** Maven, with the wrapper committed, so no local Maven is needed.
-- **Database:** PostgreSQL is the default. The image is bumped to `postgres:17-alpine`, because PostgreSQL 11 has been
-  end-of-life since November 2023 (no more security fixes). Database name, user, password and port are unchanged,
-  and the port is bound to 127.0.0.1 only. An `h2` profile (PostgreSQL compatibility mode, file database) allows a
-  zero-setup start. The migrations are written to run on both.
-- **Integration tests** run against real PostgreSQL via Testcontainers. Locking behaviour, which matters here,
-  differs between databases, so H2 is not used for those tests.
-- **Frontend:** Ext JS **6.2.0 GPL**, classic toolkit, Triton theme. The runtime (`ext-all.js`, theme, fonts,
-  license) is vendored into `src/main/resources/static/vendor/` and served by Spring Boot from the same JAR. There is
-  no Sencha Cmd and no Node build.
-  - The publicly downloadable `@sencha/ext` 7.x/8.x packages on npm carry an evaluation/trial license that forbids
-    use beyond the trial. 6.2.0 (npm `extjs-gpl`) is the newest Ext JS build that can be redistributed freely under
-    GPLv3.
-  - Vendoring keeps the app working offline and pinned to one version, and avoids CORS (same origin as the API).
-  - The app code is a handful of `Ext.define` classes loaded by `<script>` tags. This is enough for "forms,
-    dropdowns, buttons and grids" as required.
+- **Backend:** Java 21 (LTS) mit Spring Boot 4.1 (aktuelles stabiles Release; der Initializr bietet 3.x nicht mehr
+  an), Spring Data JPA/Hibernate und Flyway für das Schema. `ddl-auto=validate`, Hibernate prüft also nur das Mapping.
+- **Build:** Maven, mit eingechecktem Wrapper, sodass kein lokales Maven nötig ist.
+- **Datenbank:** Standard ist PostgreSQL. Das Image wurde auf `postgres:17-alpine` angehoben, weil PostgreSQL 11 seit
+  November 2023 nicht mehr unterstützt wird (keine Sicherheitsupdates). Datenbankname, Benutzer, Passwort und Port sind
+  unverändert, und der Port ist nur an 127.0.0.1 gebunden. Ein `h2`-Profil (PostgreSQL-Kompatibilitätsmodus,
+  Dateidatenbank) erlaubt einen Start ohne Einrichtung. Die Migrationen laufen auf beiden.
+- **Integrationstests** laufen gegen echtes PostgreSQL über Testcontainers. Das Sperrverhalten, auf das es hier
+  ankommt, unterscheidet sich zwischen Datenbanken, deshalb wird H2 für diese Tests nicht verwendet.
+- **Frontend:** Ext JS **6.2.0 GPL**, Classic Toolkit, Triton-Theme. Die Laufzeit (`ext-all.js`, Theme, Schriften,
+  Lizenz) liegt in `src/main/resources/static/vendor/` und wird von Spring Boot aus derselben JAR ausgeliefert. Es gibt
+  kein Sencha Cmd und keinen Node-Build.
+  - Die öffentlich herunterladbaren `@sencha/ext`-Pakete 7.x/8.x auf npm stehen unter einer Evaluierungs-/Testlizenz,
+    die eine Nutzung über den Testzeitraum hinaus verbietet. 6.2.0 (npm `extjs-gpl`) ist die neueste Ext-JS-Version,
+    die unter GPLv3 frei weitergegeben werden darf.
+  - Das Mitliefern hält die Anwendung offline lauffähig und auf eine Version festgelegt und vermeidet CORS (gleicher
+    Ursprung wie die API).
+  - Der Anwendungscode besteht aus wenigen `Ext.define`-Klassen, die per `<script>`-Tag geladen werden. Das genügt für
+    die geforderten „Formulare, Dropdowns, Buttons und Grids“.
 
-## Consequences
+## Konsequenzen
 
-- `java -jar target/appointments-1.0.0.jar` is the complete application.
-- About 8 MB of third-party JS/CSS sits in the repository. Upgrading means replacing one folder.
-- A commercial Ext JS 7+ license would allow modern packages and Sencha Cmd builds. The views would carry over largely
-  unchanged.
+- `java -jar target/appointments-1.0.0.jar` ist die vollständige Anwendung.
+- Rund 8 MB JS/CSS von Drittanbietern liegen im Repository. Ein Update bedeutet, einen Ordner auszutauschen.
+- Eine kommerzielle Lizenz für Ext JS 7+ würde moderne Pakete und Builds mit Sencha Cmd ermöglichen. Die Views ließen
+  sich weitgehend unverändert übernehmen.

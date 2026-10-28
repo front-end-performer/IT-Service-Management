@@ -1,20 +1,22 @@
-# 0007 – Opening hours per provider, in local time
+# 0007 – Öffnungszeiten je Anbieter, in Ortszeit
 
-**Status:** accepted. This supersedes the first version's "no opening hours" decision.
+**Status:** angenommen. Ersetzt die Entscheidung „keine Öffnungszeiten“ der ersten Version.
 
-## Context
+## Kontext
 
-The task never defines opening hours. Without them, suggestions offer slots at 03:00 or on Sundays, which an IT
-service shop cannot honour. The providers are German, while the API and the legacy data are in UTC. Germany switches
-between CET (UTC+1) and CEST (UTC+2), so a fixed UTC window would shift by one hour twice a year.
+Die Aufgabe definiert keine Öffnungszeiten. Ohne sie bieten Vorschläge Termine um 03:00 oder an Sonntagen an, die ein
+IT-Service-Betrieb nicht einhalten kann. Die Anbieter sind deutsch, API und Bestandsdaten dagegen in UTC. Deutschland
+wechselt zwischen MEZ (UTC+1) und MESZ (UTC+2); ein festes UTC-Fenster würde sich also zweimal im Jahr um eine Stunde
+verschieben.
 
-The first version deliberately followed the spec literally and had no opening hours. A later review against a
-checklist of common pitfalls made them a requirement, so they were added as a documented deviation.
+Die erste Version folgte bewusst wörtlich der Spezifikation und hatte keine Öffnungszeiten. Eine spätere Prüfung anhand
+einer Checkliste typischer Fallstricke machte sie zur Anforderung; sie wurden daher als dokumentierte Abweichung
+ergänzt.
 
-## Decision
+## Entscheidung
 
-- **Configuration per provider:** each provider has a `time-zone` (e.g. `Europe/Berlin`) and `opening-hours`, one
-  period per weekday as local wall-clock time.
+- **Konfiguration je Anbieter:** Jeder Anbieter hat eine `time-zone` (z. B. `Europe/Berlin`) und `opening-hours`, einen
+  Zeitraum je Wochentag in lokaler Uhrzeit.
 
   ```yaml
   time-zone: Europe/Berlin
@@ -23,50 +25,50 @@ checklist of common pitfalls made them a requirement, so they were added as a do
     SATURDAY: 09:00-13:00
   ```
 
-  - Days that are not listed are closed.
-  - A provider without `opening-hours` is open around the clock. This keeps the configuration of simple or
-    non-local providers short.
-  - Invalid zones or periods (e.g. `18:00-08:00`) stop the application at startup.
-- **Configured hours:**
+  - Nicht aufgeführte Tage sind geschlossen.
+  - Ein Anbieter ohne `opening-hours` ist durchgehend geöffnet. So bleibt die Konfiguration einfacher oder nicht
+    ortsgebundener Anbieter kurz.
+  - Ungültige Zeitzonen oder Zeiträume (z. B. `18:00-08:00`) verhindern den Start der Anwendung.
+- **Konfigurierte Zeiten:**
 
-  | Provider | Mon–Fri | Sat | Sun |
+  | Anbieter | Mo–Fr | Sa | So |
   |---|---|---|---|
-  | IT-Service Müller | 08:00–18:00 | 09:00–13:00 | closed |
-  | Computer-Service Schneider | 08:00–17:00 | 10:00–14:00 | closed |
+  | IT-Service Müller | 08:00–18:00 | 09:00–13:00 | geschlossen |
+  | Computer-Service Schneider | 08:00–17:00 | 10:00–14:00 | geschlossen |
 
-  All 40 legacy appointments fall within these hours. The latest one ends at 16:00 local time.
-- **Persistence:** the hours are stored like the rest of the catalog: `provider.time_zone` plus
+  Alle 40 Bestandstermine liegen innerhalb dieser Zeiten. Der späteste endet um 16:00 Ortszeit.
+- **Speicherung:** Die Zeiten werden wie der übrige Katalog gespeichert: `provider.time_zone` plus
   `provider_opening_hours (provider_id, day_of_week, opens_at time, closes_at time)` (Flyway `V2`).
-  - These are the only non-instant time columns, and that is deliberate. "08:00 in Berlin" is a wall-clock rule, not
-    a point in time.
-- **The whole appointment must fit:** it must start at or after opening and end at or before closing *of the same
-  local day*.
-  - An appointment may end exactly at closing time (half-open interval).
-  - It may **not** run past closing time, and it may **not** cross midnight, even if the next day is open. A repair
-    is not interrupted overnight.
-- **Daylight saving time:** each candidate's start and end are converted to `ZonedDateTime` in the provider's zone and
-  compared as local times. Opening at 08:00 local is therefore 07:00Z in winter and 06:00Z in summer, on every day,
-  including the days after the switch.
-  - The non-existent hour (02:00–03:00 in spring) and the repeated hour (02:00–03:00 in autumn) are outside any
-    configured opening hours, so they need no special handling.
-  - The 15-minute grid stays in UTC. For zones with whole-hour or half-hour offsets, it is identical to local quarter
-    hours.
-- **Enforced everywhere:**
-  - in `AppointmentScheduler`, the single write path, for both bookings and imports;
-  - in `SlotFinder`, for suggestions.
+  - Das sind die einzigen Zeitspalten, die keine Zeitpunkte sind, und das ist Absicht. „08:00 in Berlin“ ist eine Regel
+    für die Wanduhr, kein Zeitpunkt.
+- **Der ganze Termin muss passen:** Er muss frühestens zur Öffnung beginnen und spätestens zur Schließung *desselben
+  lokalen Tages* enden.
+  - Ein Termin darf genau zur Schließzeit enden (halboffenes Intervall).
+  - Er darf **nicht** über die Schließzeit hinaus und **nicht** über Mitternacht laufen, auch wenn der nächste Tag
+    geöffnet ist. Eine Reparatur wird nicht über Nacht unterbrochen.
+- **Sommerzeit:** Start und Ende jedes Kandidaten werden in die Zeitzone des Anbieters (`ZonedDateTime`) umgerechnet
+  und als Ortszeiten verglichen. Öffnung um 08:00 Ortszeit ist daher im Winter 07:00Z und im Sommer 06:00Z, an jedem
+  Tag, auch an den Tagen nach der Umstellung.
+  - Die nicht existierende Stunde (02:00–03:00 im Frühjahr) und die doppelte Stunde (02:00–03:00 im Herbst) liegen
+    außerhalb aller konfigurierten Öffnungszeiten und brauchen keine Sonderbehandlung.
+  - Das 15-Minuten-Raster bleibt in UTC. Für Zeitzonen mit ganz- oder halbstündigem Versatz ist es identisch mit
+    lokalen Viertelstunden.
+- **Überall durchgesetzt:**
+  - in `AppointmentScheduler`, dem einzigen Schreibpfad, für Buchungen und Importe;
+  - in `SlotFinder`, für Vorschläge.
 
-  Results:
-  - A booking outside the opening hours is rejected with **400**, like an off-grid or past start: the request can
-    never succeed, independent of the current load.
-  - An import row outside the opening hours is rejected as `OUTSIDE_OPENING_HOURS`, because the scheduling rules
-    apply to imported appointments too.
+  Folgen:
+  - Eine Buchung außerhalb der Öffnungszeiten wird mit **400** abgelehnt, wie ein Start außerhalb des Rasters oder in
+    der Vergangenheit: Die Anfrage kann nie gelingen, unabhängig von der aktuellen Auslastung.
+  - Eine Importzeile außerhalb der Öffnungszeiten wird als `OUTSIDE_OPENING_HOURS` abgelehnt, weil die Terminregeln
+    auch für importierte Termine gelten.
 
-## Consequences
+## Konsequenzen
 
-- Suggestions are realistic, and requests over a long range produce far fewer candidates.
-- One period per day means a lunch break needs a list of periods per day. The `OpeningHours` type and the table would
-  carry this with a small change.
-- Public holidays are not modelled. They would be a list of closed dates per provider.
-- The API exposes the hours as an addition to the provider (`timeZone`, `openingHours`; ADR 0006). The UI shows them
-  and works in the provider's local time. Error messages also name them, e.g. "outside the opening hours of
-  IT-MUELLER ({MONDAY=08:00-18:00, …} Europe/Berlin)".
+- Vorschläge sind realistisch, und Anfragen über einen langen Zeitraum erzeugen weit weniger Kandidaten.
+- Ein Zeitraum je Tag bedeutet: Eine Mittagspause bräuchte eine Liste von Zeiträumen je Tag. Der Typ `OpeningHours` und
+  die Tabelle trügen das mit einer kleinen Änderung.
+- Feiertage sind nicht abgebildet. Sie wären eine Liste geschlossener Tage je Anbieter.
+- Die API liefert die Zeiten als Ergänzung zum Anbieter (`timeZone`, `openingHours`; ADR 0006). Die Oberfläche zeigt sie
+  an und arbeitet in der Ortszeit des Anbieters. Auch Fehlermeldungen nennen sie, z. B. „outside the opening hours of
+  IT-MUELLER ({MONDAY=08:00-18:00, …} Europe/Berlin)“.

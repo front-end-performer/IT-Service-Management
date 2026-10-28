@@ -1,81 +1,88 @@
-# 0002 – Providers and services come from configuration
+# 0002 – Anbieter und Dienstleistungen kommen aus der Konfiguration
 
-**Status:** accepted
+**Status:** angenommen
 
-## Context
+## Kontext
 
-Two providers are needed now, and more must be possible "without fundamental changes to the source code". The same
-service code can have different durations at different providers (DIA: 30 min at Müller, 15 min at Schneider).
+Jetzt werden zwei Anbieter gebraucht, weitere müssen „ohne grundlegende Änderungen am Quellcode“ möglich sein.
+Derselbe Leistungscode kann bei verschiedenen Anbietern unterschiedlich lange dauern (DIA: 30 min bei Müller, 15 min
+bei Schneider).
 
-## Decision
+## Entscheidung
 
-- **Data model:**
+- **Datenmodell:**
   - `provider (id, name, capacity)`
-  - `service_offering (id, provider_id, code, name, duration_minutes)` with `UNIQUE(provider_id, code)`. A service
-    belongs to exactly one provider, so durations can differ per provider and there is no shared global service
-    table.
-  - `appointment` references both, and stores the computed `end_at` (see 0004).
-- **Source of truth:** `catalog.providers` in `application.yml`, bound to a validated `@ConfigurationProperties`
-  record. `CatalogInitializer` upserts it into the database on every start: it inserts new entries and updates names,
-  capacities and durations. Entries removed from the configuration are **kept**, because appointments may reference
-  them.
-- **One entry point:** `CatalogService` is the only way the rest of the application reads providers and services.
-  It is used by the REST layer, booking, suggestions, queries and import.
-  - It owns the "not found" rules, so an unknown provider or service is answered identically everywhere.
-  - It also owns the locked access (`lockProvider`, `SELECT … FOR UPDATE`) that every schedule change starts with.
-- **Internal names:** the domain uses `Provider` and `ServiceOffering` (table `service_offering`). The spec names
-  `it-service`/`serviceId` and `repairService`/`repairServiceId` appear only in controllers and DTOs (`api/`).
-- **Public identifiers:** the provider id is a readable key (`IT-MUELLER`, `CS-SCHNEIDER`), matching the spec
-  example. `repairServiceId` is the service code; see the next section for why.
+  - `service_offering (id, provider_id, code, name, duration_minutes)` mit `UNIQUE(provider_id, code)`. Eine
+    Dienstleistung gehört genau einem Anbieter, deshalb können Dauern je Anbieter abweichen, und es gibt keine
+    gemeinsame globale Dienstleistungstabelle.
+  - `appointment` verweist auf beide und speichert das berechnete `end_at` (siehe 0004).
+- **Maßgebliche Quelle:** `catalog.providers` in `application.yml`, gebunden an einen validierten
+  `@ConfigurationProperties`-Record. `CatalogInitializer` gleicht ihn bei jedem Start mit der Datenbank ab: neue
+  Einträge werden eingefügt, Namen, Kapazitäten und Dauern aktualisiert. Aus der Konfiguration entfernte Einträge
+  **bleiben erhalten**, weil Termine auf sie verweisen können.
+- **Ein Einstiegspunkt:** `CatalogService` ist der einzige Weg, auf dem der Rest der Anwendung Anbieter und
+  Dienstleistungen liest. Ihn nutzen REST-Schicht, Buchung, Vorschläge, Abfragen und Import.
+  - Er besitzt die „nicht gefunden“-Regeln, sodass ein unbekannter Anbieter oder Dienst überall gleich beantwortet
+    wird.
+  - Er besitzt auch den gesperrten Zugriff (`lockProvider`, `SELECT … FOR UPDATE`), mit dem jede Änderung am
+    Terminplan beginnt.
+- **Interne Namen:** Die Domäne verwendet `Provider` und `ServiceOffering` (Tabelle `service_offering`). Die Namen der
+  Spezifikation, `it-service`/`serviceId` und `repairService`/`repairServiceId`, kommen nur in Controllern und DTOs
+  (`api/`) vor.
+- **Öffentliche Kennungen:** Die Anbieter-ID ist ein lesbarer Schlüssel (`IT-MUELLER`, `CS-SCHNEIDER`), passend zum
+  Beispiel der Spezifikation. `repairServiceId` ist der Leistungscode; warum, erklärt der nächste Abschnitt.
 
-### Why `repairServiceId` is unique per provider
+### Warum `repairServiceId` nur je Anbieter eindeutig ist
 
-**What the task and spec say.** The task lists, for every service, *"Eindeutige Kennung"* **and** *"Leistungscode"*
-as two separate fields (req. 2). It also says *"Jede Dienstleistung besitzt einen eindeutigen Leistungscode"* and
-*"Auch bei identischen Leistungscodes können unterschiedliche Bearbeitungszeiten gelten."* The spec's example for
-`repairService` is `id: DIA`, `code: DIA`.
+**Was Aufgabe und Spezifikation sagen.** Die Aufgabe nennt für jede Dienstleistung *"Eindeutige Kennung"* **und**
+*"Leistungscode"* als zwei getrennte Felder (Anforderung 2). Außerdem heißt es *"Jede Dienstleistung besitzt einen
+eindeutigen Leistungscode"* und *"Auch bei identischen Leistungscodes können unterschiedliche Bearbeitungszeiten
+gelten."* Das Beispiel der Spezifikation für `repairService` ist `id: DIA`, `code: DIA`.
 
-These pull in two directions:
-- Read literally, two separate fields suggest an identifier that is unique across all providers.
-- The spec example makes the identifier equal to the code. DIA exists at both providers (30 vs. 15 minutes), so the
-  code, and therefore the id, can only be unique *per provider*. The task's own "eindeutiger Leistungscode" is
-  likewise only true per provider.
+Das zieht in zwei Richtungen:
+- Wörtlich gelesen legen zwei getrennte Felder eine Kennung nahe, die über alle Anbieter hinweg eindeutig ist.
+- Das Beispiel der Spezifikation setzt die Kennung gleich dem Code. DIA gibt es bei beiden Anbietern (30 bzw. 15
+  Minuten), also kann der Code und damit die ID nur *je Anbieter* eindeutig sein. Auch der „eindeutige Leistungscode“
+  der Aufgabe selbst stimmt nur je Anbieter.
 
-**Our reading.** A service is an offering *of one provider*. Its identity is the pair (provider, code).
-- In the API this pair is always complete, because every endpoint that takes a `repairServiceId` also carries the
-  provider in its path (`/it-services/{serviceId}/…`).
-- `DIA` under `/it-services/IT-MUELLER` therefore identifies exactly one service: Müller's 30-minute diagnosis.
-- The identifier is unique in every context where it can be used, which is what "eindeutig" requires of an
-  identifier.
+**Unsere Lesart.** Eine Dienstleistung ist ein Angebot *eines Anbieters*. Ihre Identität ist das Paar (Anbieter, Code).
+- In der API ist dieses Paar immer vollständig, weil jeder Endpunkt mit `repairServiceId` den Anbieter auch im Pfad
+  trägt (`/it-services/{serviceId}/…`).
+- `DIA` unter `/it-services/IT-MUELLER` bezeichnet daher genau eine Dienstleistung: Müllers 30-minütige Diagnose.
+- Die Kennung ist in jedem Kontext eindeutig, in dem sie verwendet werden kann. Genau das verlangt „eindeutig“ von
+  einer Kennung.
 
-**Why this beats a globally unique public id:**
-1. **Spec compliance.** It matches the spec example exactly, and the spec is the API contract clients rely on.
-2. **One key everywhere.** It is the same key the legacy CSV uses (`SERVICE`). Imports, bookings and suggestions
-   resolve a service identically: `(provider from path, code)`.
-3. **Stable.** It is the same in every environment and after every restart. A generated key would differ per
-   database, so clients and tests could not hard-code it.
-4. **Readable.** `DIA` is meaningful in URLs, logs, error messages and the frontend.
+**Warum das besser ist als eine global eindeutige öffentliche ID:**
+1. **Konformität mit der Spezifikation.** Es entspricht genau dem Beispiel der Spezifikation, und die Spezifikation ist
+   der API-Vertrag, auf den sich Clients verlassen.
+2. **Ein Schlüssel überall.** Es ist derselbe Schlüssel, den die Bestands-CSV verwendet (`SERVICE`). Importe,
+   Buchungen und Vorschläge lösen eine Dienstleistung identisch auf: `(Anbieter aus dem Pfad, Code)`.
+3. **Stabil.** Er ist in jeder Umgebung und nach jedem Neustart gleich. Ein generierter Schlüssel würde je Datenbank
+   abweichen; Clients und Tests könnten ihn nicht fest verwenden.
+4. **Lesbar.** `DIA` ist in URLs, Logs, Fehlermeldungen und im Frontend aussagekräftig.
 
-**The global identifier exists, internally.** `service_offering.id` (a numeric primary key) is globally unique and
-used for all foreign keys. It is deliberately not exposed, because no client needs to address a service without
-knowing its provider.
+**Die globale Kennung gibt es, intern.** `service_offering.id` (ein numerischer Primärschlüssel) ist global eindeutig
+und wird für alle Fremdschlüssel verwendet. Er wird bewusst nicht veröffentlicht, weil kein Client eine
+Dienstleistung ansprechen muss, ohne ihren Anbieter zu kennen.
 
-**Safety net.** A service is never looked up by code alone. The only lookup is
-`ServiceOfferingRepository.findByProviderIdAndCode`. Asking Müller for Schneider's `VIR` returns 404, which is
-tested by the acceptance scenarios B5 and S9.
+**Sicherheitsnetz.** Eine Dienstleistung wird nie allein über den Code gesucht. Die einzige Abfrage ist
+`ServiceOfferingRepository.findByProviderIdAndCode`. Fragt man Müller nach Schneiders `VIR`, kommt 404; das prüfen die
+Abnahmeszenarien B5 und S9.
 
-**Rejected alternative:** a global public id such as `IT-MUELLER-DIA`.
-- It deviates from the spec example.
-- It repeats the provider that is already in the path.
-- The API would have to accept two forms (id and code) or break the legacy key.
+**Verworfene Alternative:** eine globale öffentliche ID wie `IT-MUELLER-DIA`.
+- Sie weicht vom Beispiel der Spezifikation ab.
+- Sie wiederholt den Anbieter, der schon im Pfad steht.
+- Die API müsste zwei Formen akzeptieren (ID und Code) oder den Bestandsschlüssel aufgeben.
 
-Should a future client need a global id, adding it is backwards-compatible: expose an extra field and keep accepting
-the code.
+Braucht ein künftiger Client eine globale ID, lässt sie sich abwärtskompatibel ergänzen: ein zusätzliches Feld
+veröffentlichen und den Code weiter akzeptieren.
 
-## Consequences
+## Konsequenzen
 
-- Adding a provider or service means a config change and a restart. No code changes and no migration are needed.
-- **Changing a duration** affects only future bookings. Existing appointments keep their stored end time, which is
-  the safe choice for already-agreed appointments.
-- No write API for the catalog. The task requires management of providers and services, but not via REST, and the
-  spec has no such endpoints. An admin API could later write to the same tables.
+- Einen Anbieter oder eine Dienstleistung hinzuzufügen bedeutet eine Konfigurationsänderung und einen Neustart. Weder
+  Codeänderungen noch Migrationen sind nötig.
+- **Eine geänderte Dauer** wirkt sich nur auf künftige Buchungen aus. Bestehende Termine behalten ihre gespeicherte
+  Endzeit, die sichere Wahl für bereits vereinbarte Termine.
+- Keine schreibende API für den Katalog. Die Aufgabe verlangt die Verwaltung von Anbietern und Dienstleistungen, aber
+  nicht über REST, und die Spezifikation hat keine solchen Endpunkte. Eine Admin-API könnte später in dieselben
+  Tabellen schreiben.

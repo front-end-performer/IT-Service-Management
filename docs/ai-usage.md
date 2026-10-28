@@ -1,178 +1,353 @@
-# Use of AI
+# Einsatz von KI
 
-This project was built with **Claude Code** (Anthropic's agentic CLI, model Claude Opus 5.5) in a terminal session,
-with a human developer making the decisions and reviewing the results.
+Dieses Projekt wurde in einer Terminalsitzung mit **Claude Code**
+(Anthropics agentischer CLI, Modell Claude Opus 5.5) entwickelt, wobei
+ein menschlicher Entwickler die Entscheidungen traf und die Ergebnisse
+überprüfte.
 
-## Workflow
+## Arbeitsablauf
 
-1. **Planning (plan mode, read-only).**
-   - Claude read the task, `rest-api-spec.yml`, `docker-compose.yml` and the CSV files, and checked the local
-     toolchain.
-   - It found that the two CSV files have **swapped names**, by counting service codes per file.
-   - It checked the Ext JS licensing situation on the public registries. The npm `@sencha/ext` 8.0 package turned out
-     to be trial-licensed, while `extjs-gpl@6.2.0` is GPL.
-   - Open questions were put to the developer, who decided: Ext JS vendored rather than loaded from a CDN, no opening
-     hours (later revised, see step 7), Maven with PostgreSQL as the default.
-   - The resulting plan is archived in [`ai/implementation-plan.md`](ai/implementation-plan.md). The developer
-     checked it against the task's requirements before approving.
-2. **Implementation, in the plan's order.** The steps were: scaffolding (Spring Initializr), the pure scheduling core
-   with unit tests, persistence and catalog, services with locking, REST, CSV import, integration and concurrency
-   tests, frontend, and docs. Each step was compiled and tested before the next one.
-3. **Verification by execution, not assertion.**
-   - The full test suite runs against PostgreSQL in Testcontainers.
-   - The packaged JAR was smoke-tested with curl, using the real CSV files.
-   - The concurrency test was itself checked by removing the lock: it then failed with 10 of 20 bookings accepted at
-     capacity 2.
-   - The Ext JS UI was driven headlessly through the Chrome DevTools Protocol (booking, filtering, details, import),
-     and the screenshots were inspected.
-4. **One wrong expectation found by the tests.** An integration test initially expected a laptop slot at 08:00 on
-   2026-11-02. The test failed, and analysis showed the expectation was wrong, not the code: the 2-hour slot would
-   overlap 09:15–09:45, where capacity is already reached. The test was corrected and the reasoning recorded in a
-   comment.
+1.  **Planung (Planmodus, nur lesender Zugriff).**
 
-5. **Review against external checklists.** After the first version, the developer provided two reviewer-style
-   checklists of common pitfalls: concurrency, peak concurrency versus overlap count, CSV import decisions, spec
-   naming and gaps. Claude compared every point with the code. Most were already covered; the comparison found three
-   gaps, which were fixed with tests:
-   - past slots were suggested and bookable;
-   - the booking body rejected `2026-11-02T08:00Z`, which has no seconds;
-   - there was no automated check that the implementation matches the Swagger 2.0 spec (now `SpecContractTest`).
+    -   Claude las die Aufgabenstellung, `rest-api-spec.yml`,
+        `docker-compose.yml` und die CSV-Dateien und überprüfte die
+        lokale Toolchain.
+    -   Durch das Zählen der Service-Codes pro Datei stellte Claude
+        fest, dass die beiden CSV-Dateien **vertauschte Namen** hatten.
+    -   Claude überprüfte die Lizenzsituation von Ext JS in den
+        öffentlichen Paketregistern. Dabei stellte sich heraus, dass das
+        npm-Paket `@sencha/ext` 8.0 unter einer Testlizenz steht,
+        während `extjs-gpl@6.2.0` unter der GPL lizenziert ist.
+    -   Offene Fragen wurden dem Entwickler vorgelegt. Dieser entschied
+        sich für eine lokal eingebundene Version von Ext JS statt für
+        das Laden über ein CDN, zunächst gegen Öffnungszeiten (später
+        geändert, siehe Schritt 7) sowie für Maven mit PostgreSQL als
+        Standard.
+    -   Der daraus entstandene Plan ist unter
+        [`ai/implementation-plan.md`](ai/implementation-plan.md)
+        archiviert. Vor der Freigabe prüfte der Entwickler ihn anhand
+        der Anforderungen der Aufgabe.
 
-   The integration tests also got a fixed clock, so they don't expire after 2026-11-02.
+2.  **Implementierung in der Reihenfolge des Plans.**
 
-6. **Test completeness.** At the developer's request, every task requirement and checklist pitfall was mapped to a
-   test ([`test-coverage.md`](test-coverage.md)). The missing ones were added: import racing bookings, identical
-   parallel requests, parallel re-imports, the checklist's A/B/C peak example, capacity 3, file-order conflicts, DIA
-   duration per provider, extensibility via config, the H2 profile and frontend serving. The import race tests were
-   confirmed to fail when the import does not take the provider lock.
+    Die Schritte waren: Grundgerüst (Spring Initializr), der reine
+    Planungskern mit Unit-Tests, Persistenz und Katalog, Services mit
+    Sperrmechanismen, REST, CSV-Import, Integrations- und
+    Nebenläufigkeitstests, Frontend und Dokumentation. Jeder Schritt
+    wurde kompiliert und getestet, bevor der nächste begann.
 
-7. **Opening hours.** During planning, the developer chose to follow the spec literally, without opening hours. A
-   later checklist from the developer listed them as a must. They were added as a documented deviation
-   ([ADR 0007](adr/0007-opening-hours.md)): per provider, in local time, with daylight saving handled, and no
-   crossing of closing time or midnight. Before choosing the configured hours, Claude checked that every legacy
-   appointment falls within them.
+3.  **Überprüfung durch tatsächliche Ausführung statt bloßer
+    Behauptungen.**
 
-8. **Concurrency parity.** Checking the concurrency checklist, Claude measured that H2 gives up waiting for a row lock
-   after about 2 s, while PostgreSQL waits indefinitely. Both now use the same explicit lock timeout, and a timeout is
-   answered with 503. New tests cover:
-   - 409 for the losers of a race at HTTP level;
-   - that bookings and imports really wait for the lock;
-   - that other providers are not blocked;
-   - the same checks on H2.
+    -   Die vollständige Testsuite wird mit PostgreSQL in Testcontainers
+        ausgeführt.
+    -   Das paketierte JAR wurde mithilfe von curl und den echten
+        CSV-Dateien einem Smoke-Test unterzogen.
+    -   Der Nebenläufigkeitstest wurde auch durch Entfernen der Sperre
+        überprüft: Ohne Sperre schlug der Test fehl, weil bei einer
+        Kapazität von 2 zehn von zwanzig Buchungen akzeptiert wurden.
+    -   Die Ext-JS-Oberfläche wurde ohne sichtbares Browserfenster über
+        das Chrome DevTools Protocol bedient (Buchung, Filterung,
+        Details, Import); anschließend wurden die Screenshots überprüft.
 
-   Each lock test was confirmed to fail when the lock is removed, on both databases.
+4.  **Ein durch die Tests aufgedeckter falscher Erwartungswert.**
 
-9. **Acceptance suite.** The developer supplied a 52-scenario test plan derived from the task text (capacity, grid,
-   end time, suggestions, booking, concurrency, import, management, providers, extensibility). It was later extended
-   by three overlap shapes (C11 inside, C12 enclosing, C13 touching before), giving 55 scenarios. Claude implemented
-   it 1:1 as a separate suite with the scenario ids in the method names. The suite was then validated by planting four
-   typical bugs in the production code, and each was caught (see [`test-coverage.md`](test-coverage.md)). The bug
-   "new start or end inside an existing appointment" is caught by C12 only.
-   - One scenario (S4) assumes that `to` limits the *start* of a suggestion. This project decided that `to` limits the
-     *end*, so S4 runs with a wider range and says so in a comment.
-   - X1 adds the third provider through an ordinary configuration file, not through test code.
-   - The developer asked what the task itself says about the four decisions the scenarios depend on. Claude quoted
-     the task and the original spec: all four are left open. The only tension is the literal "Eindeutige Kennung"
-     versus the per-provider service id. The developer kept the per-provider id, and the justification was written
-     out in [ADR 0002](adr/0002-configuration-driven-catalog.md). The quotes are in
-     [`test-coverage.md`](test-coverage.md).
+    Ein Integrationstest erwartete zunächst am 02.11.2026 um 08:00 Uhr
+    einen Laptop-Zeitslot. Der Test schlug fehl. Die Analyse zeigte,
+    dass nicht der Code, sondern die Erwartung falsch war: Der
+    zweistündige Slot hätte sich mit dem Zeitraum 09:15--09:45 Uhr
+    überschnitten, in dem die Kapazität bereits ausgeschöpft war. Der
+    Test wurde korrigiert und die Begründung in einem Kommentar
+    festgehalten.
 
-10. **Review against the evaluation criteria.** The packaged JAR was run again, and the README's manual frontend check
-    was driven in headless Chrome:
-    - all seven functions, the import tab, and the race "slot taken between suggestion and click";
-    - the UI shows the 409 reason and refreshes the suggestions;
-    - no browser console errors.
+5.  **Abgleich mit externen Checklisten.**
 
-    The first attempt at the race case booked successfully. Claude traced this to its own test script: the slot was
-    "filled" with LAPs, which the server correctly rejected, so the slot stayed free. The application was right. The
-    script was fixed and the check rerun. The review also found a README step that could not be reproduced as
-    written; it was rewritten as step 5b.
+    Nach der ersten Version stellte der Entwickler zwei Checklisten im
+    Stil einer Code-Review mit typischen Problemstellen bereit:
+    Nebenläufigkeit, maximale gleichzeitige Belegung im Vergleich zur
+    Anzahl überlappender Termine, Entscheidungen beim CSV-Import sowie
+    Benennung und Lücken in der Spezifikation. Claude verglich jeden
+    Punkt mit dem Code. Die meisten Punkte waren bereits abgedeckt; beim
+    Abgleich wurden jedoch drei Lücken gefunden und mit Tests behoben:
 
-11. **Fixes after the evaluation review.** The developer asked to fix three of the weak spots found, to explain
-    two, then to fix one of those as well:
-    - **Local time:** the UI now works in the provider's time zone. The API exposes `timeZone` and `openingHours`.
-      The JS conversion was checked in Node across both 2026/27 DST switches, then in headless Chrome with the browser
-      deliberately set to America/New_York.
-    - **Chunked import:** the import now runs in chunks, so bookings are not blocked. While testing, an expected
-      count of 1600 came out as 1598. That was correct behaviour: the test's own booking overlapped imported rows,
-      and two rows were rejected for capacity. The test was fixed, and it was confirmed to fail without chunking.
-    - **Paging:** the appointment list is paged with `X-Total-Count`.
-    - **`CatalogService`:** all provider and service lookups now go through one service. Previously the same "not
-      found" check existed in five places.
-    - The Ext JS version was explained (license implication) but deliberately left unchanged, at the developer's
-      request.
+    -   Vergangene Zeitslots wurden vorgeschlagen und konnten gebucht
+        werden.
+    -   Der Buchungsrequest wies `2026-11-02T08:00Z` zurück, obwohl der
+        Zeitstempel keine Sekunden enthält.
+    -   Es gab keine automatisierte Prüfung, ob die Implementierung mit
+        der Swagger-2.0-Spezifikation übereinstimmt. Dafür gibt es jetzt
+        `SpecContractTest`.
 
-12. **Deviations register.** Prompted by the task's "Flexibility" section, Claude built
-    [`deviations.md`](deviations.md).
-    - **API additions:** the original and current `rest-api-spec.yml` were parsed and compared mechanically. The
-      comparison found additions only.
-    - **Behavioural and task-level deviations:** listed by hand.
-    - **Each entry** has the original, the change, the reason, the ADR and a test. A script verified that every
-      referenced test exists and that every YAML addition is marked "Erweiterung".
+    Außerdem erhielten die Integrationstests eine fest eingestellte Uhr,
+    damit sie nicht nach dem 02.11.2026 ablaufen.
 
-    Building the register surfaced three real issues, all fixed:
-    - **A wrong claim:** "existing clients keep working" about default paging. At the developer's choice, paging
-      became opt-in.
-    - **A real bug:** a CSV customer number over 64 characters made the whole import fail with 409. It is now a
-      rejected row (`INVALID_CUSTOMER_NUMBER`), test first.
-    - **Undocumented behaviour:** `Location`, `413` and the length limit were missing from the YAML.
+6.  **Vollständigkeit der Tests.**
 
-13. **Senior follow-ups to the register findings.** The developer asked how a senior would fix the three findings,
-    measured against the task text. Claude separated the immediate causes from the deeper ones. The developer chose
-    two to implement:
-    - **Import status:** `RUNNING`/`COMPLETED`/`FAILED`. An aborted import now says where it stopped, and the client
-      gets 500 with a link to the report. This was tested by making the scheduler fail for one row via a spy bean.
-      A first test attempt failed because stubbing the spy passed through the scheduler's `MANDATORY` transaction
-      guard. That was a test-setup issue (the guard was working as intended), fixed by stubbing inside a
-      transaction.
-    - **Response-level spec check:** every response of every API test is checked against the YAML. It was
-      verified by deleting three spec entries one at a time; each was caught.
+    Auf Wunsch des Entwicklers wurde jede Anforderung der Aufgabe und
+    jeder Checklisten-Stolperstein einem Test zugeordnet
+    ([`test-coverage.md`](test-coverage.md)). Fehlende Tests wurden
+    ergänzt: Import bei gleichzeitig stattfindenden Buchungen,
+    identische parallele Requests, parallele erneute Importe, das
+    Peak-Beispiel A/B/C aus der Checkliste, Kapazität 3, Konflikte
+    abhängig von der Dateireihenfolge, DIA-Dauer je Anbieter,
+    Erweiterbarkeit über die Konfiguration, das H2-Profil und das
+    Ausliefern des Frontends. Es wurde bestätigt, dass die
+    Import-Race-Tests fehlschlagen, wenn der Import die Sperre des
+    jeweiligen Anbieters nicht verwendet.
 
-14. **Final check against the task.** Claude went through the task text section by section and re-verified the
-    project:
-    - the packaged JAR against PostgreSQL 17, with migrations V1–V3;
-    - both legacy files: 20 of 20 rows each, `COMPLETED`;
-    - 20 parallel bookings: 2 × 201 and 18 × 409;
-    - the full frontend check, without browser errors;
-    - the extended spec, validated as Swagger 2.0 next to the original.
+7.  **Öffnungszeiten.**
 
-    Findings, all fixed at the developer's choice:
-    - **Service name:** "Betriebssystem-Installation" did not match the task's "Betriebssysteminstallation".
-    - **Missing deliverable:** the executable JAR was not delivered. A GitHub Actions workflow now builds, tests and
-      attaches it, and publishes a release on version tags; it was checked with actionlint.
-    - **UTC in the UI:** the UI showed UTC timestamps from server messages. They are now shown in the provider's
-      time.
+    Während der Planung entschied sich der Entwickler zunächst dafür,
+    der Spezifikation wortgetreu zu folgen und keine Öffnungszeiten zu
+    berücksichtigen. Eine spätere Checkliste des Entwicklers führte
+    Öffnungszeiten jedoch als zwingende Anforderung auf. Sie wurden als
+    dokumentierte Abweichung ergänzt ([ADR
+    0007](adr/0007-opening-hours.md)): pro Anbieter, in lokaler Zeit,
+    mit Berücksichtigung der Sommerzeit und ohne Überschreitung der
+    Schließzeit oder Mitternacht. Vor der Festlegung der konfigurierten
+    Öffnungszeiten prüfte Claude, ob alle bestehenden Termine innerhalb
+    dieser Zeiten liegen.
 
-15. **YAGNI / KISS / DRY review.** Claude read the whole application and checked it against the three
-    principles, confirming each suspicion with a search (e.g. zero usages) rather than by eye. The developer
-    applied three groups:
-    - **YAGNI:** removed 4 unused test starters, the undocumented H2 console, an unused scaffold class and 2 dead
-      getters.
-    - **KISS:** a hand-written BOM-skipping `FilterReader` became string handling of the upload-capped file. The
-      import now finishes in one transaction. Opening hours are built once per provider.
-    - **DRY:** four copies of the "start N requests at once" test code became one helper (`Simultaneously`), and
-      the import report URL is built in one place.
+8.  **Gleiches Nebenläufigkeitsverhalten.**
 
-    Deliberately kept as earned complexity: the single write path, `CatalogService`, chunked import with status,
-    and the two error-message mappings (two consumers, below the rule of three).
+    Bei der Prüfung der Nebenläufigkeits-Checkliste maß Claude, dass H2
+    nach etwa zwei Sekunden das Warten auf eine Zeilensperre abbricht,
+    während PostgreSQL unbegrenzt wartet. Beide Datenbanken verwenden
+    jetzt dasselbe explizit festgelegte Sperr-Timeout; bei einer
+    Zeitüberschreitung wird HTTP 503 zurückgegeben. Neue Tests decken
+    Folgendes ab:
 
-    A slip during this step, corrected: one commit was made although the compile had failed (a brace lost while
-    removing the getters). It was found immediately, fixed and amended before any push. From then on, commits only
-    followed a green build. The race tests were checked again after the helper refactoring: all five fail without
-    the lock.
+    -   HTTP 409 für unterlegene Anfragen bei einem Wettlauf um eine
+        Buchung;
+    -   den tatsächlichen Wartevorgang von Buchungen und Importen auf
+        die Sperre;
+    -   dass andere Anbieter nicht blockiert werden;
+    -   dieselben Prüfungen mit H2.
 
-## What the human did
+    Für beide Datenbanken wurde bestätigt, dass jeder Sperrtest
+    fehlschlägt, wenn die Sperre entfernt wird.
 
-- Set the scope and constraints: Ext JS sourcing, opening hours (first none, later required), build tool and database.
-- Approved the plan and asked for a check against the task before implementation.
-- Installed the JDK when the machine turned out to have only a JRE. The assistant is configured never to use root
-  privileges.
+9.  **Abnahmetestsuite.**
 
-## What to review critically
+    Der Entwickler stellte einen Testplan mit 52 Szenarien bereit, der
+    aus der Aufgabenstellung abgeleitet war (Kapazität, Raster, Endzeit,
+    Vorschläge, Buchung, Nebenläufigkeit, Import, Verwaltung, Anbieter
+    und Erweiterbarkeit). Der Plan wurde um drei Überlappungsfälle
+    erweitert (C11 vollständig innerhalb, C12 umschließend, C13
+    unmittelbar davor endend), sodass er 55 Szenarien umfasst. Claude
+    setzte ihn im Verhältnis 1:1 als separate Testsuite um; die
+    Szenario-IDs stehen in den Methodennamen. Anschließend wurde die
+    Suite validiert, indem vier typische Fehler gezielt in den
+    Produktionscode eingebaut wurden. Alle vier wurden erkannt (siehe
+    [`test-coverage.md`](test-coverage.md)). Der Fehler „neuer Start-
+    oder Endzeitpunkt liegt innerhalb eines bestehenden Termins" wird
+    ausschließlich durch C12 erkannt.
 
-All code was generated by the AI and verified by tests and execution, as described above. The design decisions are
-explained in the [ADRs](adr/README.md) so they can be judged on their merits. Areas that deserve a reviewer's eye:
+    -   Ein Szenario (S4) geht davon aus, dass `to` den
+        **Startzeitpunkt** eines Vorschlags begrenzt. In diesem Projekt
+        wurde entschieden, dass `to` das **Ende** begrenzt. Deshalb wird
+        S4 mit einem größeren Zeitbereich ausgeführt; ein Kommentar
+        erläutert dies.
+    -   X1 fügt den dritten Anbieter über eine gewöhnliche
+        Konfigurationsdatei hinzu und nicht über Testcode.
+    -   Der Entwickler fragte, was die Aufgabenstellung selbst zu den
+        vier Entscheidungen sagt, von denen die Szenarien abhängen.
+        Claude zitierte die Aufgabenstellung und die ursprüngliche
+        Spezifikation: Alle vier Punkte sind offen gelassen. Die einzige
+        Spannung besteht zwischen der wörtlichen Formulierung
+        „Eindeutige Kennung" und der Service-ID pro Anbieter. Der
+        Entwickler behielt die anbieterspezifische ID bei; die
+        Begründung wurde in [ADR
+        0002](adr/0002-configuration-driven-catalog.md) dokumentiert.
+        Die Zitate stehen in [`test-coverage.md`](test-coverage.md).
 
-- The locking strategy (see [ADR 0003](adr/0003-pessimistic-provider-lock.md))
-- The import policy for overbooked legacy rows (see [ADR 0005](adr/0005-csv-import-policy.md))
-- The UTC-only UI
+10. **Prüfung anhand der Bewertungskriterien.**
+
+    Das paketierte JAR wurde erneut ausgeführt und die im README
+    beschriebene manuelle Frontend-Prüfung in einem
+    Headless-Chrome-Browser durchgeführt:
+
+    -   alle sieben Funktionen, der Import-Tab und der Wettlauffall
+        „Zeitslot wird zwischen Vorschlag und Klick belegt";
+    -   die Oberfläche zeigt den Grund für HTTP 409 an und aktualisiert
+        die Vorschläge;
+    -   keine Fehler in der Browserkonsole.
+
+    Beim ersten Versuch war die Buchung im Wettlauffall erfolgreich.
+    Claude stellte fest, dass dies am eigenen Testskript lag: Der Slot
+    war mit LAPs „gefüllt" worden, die der Server richtigerweise
+    ablehnte. Dadurch blieb der Slot frei. Die Anwendung verhielt sich
+    korrekt. Das Skript wurde korrigiert und die Prüfung erneut
+    ausgeführt. Außerdem wurde ein Schritt im README entdeckt, der sich
+    wie beschrieben nicht reproduzieren ließ; er wurde als Schritt 5b
+    neu formuliert.
+
+11. **Korrekturen nach der Prüfung anhand der Bewertungskriterien.**
+
+    Der Entwickler bat darum, drei der gefundenen Schwachstellen zu
+    beheben, zwei weitere zu erläutern und anschließend auch eine davon
+    zu korrigieren:
+
+    -   **Lokale Zeit:** Die Oberfläche arbeitet jetzt mit der Zeitzone
+        des Anbieters. Die API stellt `timeZone` und `openingHours`
+        bereit. Die JavaScript-Konvertierung wurde in Node über beide
+        Sommerzeitwechsel 2026/27 hinweg überprüft und anschließend in
+        Headless Chrome mit absichtlich auf `America/New_York`
+        eingestellter Browserzeitzone getestet.
+    -   **Chunk-basierter Import:** Der Import wird jetzt in Blöcken
+        ausgeführt, sodass Buchungen nicht blockiert werden. Während der
+        Tests ergab sich statt der erwarteten Anzahl von 1600 ein Wert
+        von 1598. Das war korrektes Verhalten: Die eigene Buchung des
+        Tests überschnitt sich mit importierten Zeilen, und zwei Zeilen
+        wurden wegen ausgeschöpfter Kapazität abgelehnt. Der Test wurde
+        korrigiert; außerdem wurde bestätigt, dass er ohne
+        Chunk-Verarbeitung fehlschlägt.
+    -   **Seitennavigation:** Die Terminliste ist paginiert und liefert
+        `X-Total-Count`.
+    -   **`CatalogService`:** Alle Anbieter- und Serviceabfragen laufen
+        jetzt über einen zentralen Service. Zuvor war dieselbe Prüfung
+        auf „nicht gefunden" an fünf Stellen vorhanden.
+    -   Die Ext-JS-Version und ihre Lizenzfolgen wurden erläutert, auf
+        Wunsch des Entwicklers jedoch nicht geändert.
+
+12. **Register der Abweichungen.**
+
+    Angeregt durch den Abschnitt „Flexibility" der Aufgabe erstellte
+    Claude [`deviations.md`](deviations.md).
+
+    -   **API-Ergänzungen:** Die ursprüngliche und die aktuelle
+        `rest-api-spec.yml` wurden eingelesen und maschinell verglichen.
+        Dabei wurden ausschließlich Ergänzungen gefunden.
+    -   **Verhaltens- und aufgabenbezogene Abweichungen:** Diese wurden
+        manuell aufgelistet.
+    -   **Jeder Eintrag** enthält den ursprünglichen Zustand, die
+        Änderung, die Begründung, die zugehörige ADR und einen Test. Ein
+        Skript überprüfte, ob jeder referenzierte Test existiert und ob
+        jede YAML-Ergänzung als „Erweiterung" gekennzeichnet ist.
+
+    Bei der Erstellung des Registers wurden drei tatsächliche Probleme
+    sichtbar, die alle behoben wurden:
+
+    -   **Falsche Behauptung:** Die Aussage „bestehende Clients
+        funktionieren weiterhin" traf bei standardmäßig aktivierter
+        Paginierung nicht zu. Auf Wunsch des Entwicklers wurde die
+        Paginierung daher optional gemacht.
+    -   **Tatsächlicher Fehler:** Eine CSV-Kundennummer mit mehr als 64
+        Zeichen ließ den gesamten Import mit HTTP 409 fehlschlagen. Sie
+        wird jetzt als fehlerhafte Zeile zurückgewiesen
+        (`INVALID_CUSTOMER_NUMBER`); dafür wurde zuerst ein Test
+        geschrieben.
+    -   **Nicht dokumentiertes Verhalten:** `Location`, `413` und die
+        Längenbegrenzung fehlten in der YAML-Datei.
+
+13. **Weiterführende Maßnahmen eines Senior-Entwicklers zu den
+    Registerbefunden.**
+
+    Der Entwickler fragte, wie ein Senior-Entwickler die drei Befunde
+    gemessen an der Aufgabenstellung beheben würde. Claude trennte die
+    unmittelbaren Ursachen von den tieferliegenden Problemen. Der
+    Entwickler entschied, zwei Änderungen umzusetzen:
+
+    -   **Importstatus:** `RUNNING`/`COMPLETED`/`FAILED`. Ein
+        abgebrochener Import gibt jetzt an, an welcher Stelle er
+        gestoppt wurde; der Client erhält HTTP 500 mit einem Link zum
+        Bericht. Dies wurde getestet, indem der Scheduler über eine
+        Spy-Bean für eine Zeile zum Fehlschlagen gebracht wurde. Ein
+        erster Testversuch scheiterte, weil das Stubbing des Spys die
+        Transaktionsprüfung `MANDATORY` des Schedulers durchlief. Das
+        war ein Problem beim Testaufbau (die Prüfung funktionierte wie
+        vorgesehen) und wurde behoben, indem das Stubbing innerhalb
+        einer Transaktion ausgeführt wurde.
+    -   **Spezifikationsprüfung auf Antwortebene:** Jede Antwort jedes
+        API-Tests wird gegen die YAML-Datei geprüft. Dies wurde
+        verifiziert, indem nacheinander drei Spezifikationseinträge
+        gelöscht wurden; jeder einzelne Fehler wurde erkannt.
+
+14. **Abschließende Prüfung anhand der Aufgabenstellung.**
+
+    Claude ging die Aufgabenstellung Abschnitt für Abschnitt durch und
+    überprüfte das Projekt erneut:
+
+    -   das paketierte JAR mit PostgreSQL 17 und den Migrationen V1--V3;
+    -   beide Legacy-Dateien: jeweils 20 von 20 Zeilen mit Status
+        `COMPLETED`;
+    -   20 parallele Buchungen: 2 × 201 und 18 × 409;
+    -   die vollständige Frontend-Prüfung ohne Browserfehler;
+    -   die erweiterte Spezifikation, die neben der ursprünglichen Datei
+        als Swagger 2.0 validiert wurde.
+
+    Die folgenden Befunde wurden auf Wunsch des Entwicklers alle
+    behoben:
+
+    -   **Servicebezeichnung:** „Betriebssystem-Installation" entsprach
+        nicht der Bezeichnung „Betriebssysteminstallation" aus der
+        Aufgabenstellung.
+    -   **Fehlendes Lieferartefakt:** Das ausführbare JAR war nicht
+        mitgeliefert worden. Ein GitHub-Actions-Workflow erstellt und
+        testet es nun, hängt es als Artefakt an und veröffentlicht bei
+        Versions-Tags ein Release. Der Workflow wurde mit actionlint
+        geprüft.
+    -   **UTC in der Oberfläche:** In Servermeldungen enthaltene
+        UTC-Zeitstempel wurden in der Oberfläche angezeigt. Sie werden
+        jetzt in der Zeitzone des Anbieters dargestellt.
+
+15. **Überprüfung nach YAGNI / KISS / DRY.**
+
+    Claude las die gesamte Anwendung und prüfte sie anhand der drei
+    Prinzipien. Jeden Verdacht bestätigte es durch eine Suche (zum
+    Beispiel durch den Nachweis, dass es keine Verwendungen gab), statt
+    sich allein auf eine Sichtprüfung zu verlassen. Der Entwickler
+    übernahm drei Gruppen von Änderungen:
+
+    -   **YAGNI:** Vier ungenutzte Test-Starter, die undokumentierte
+        H2-Konsole, eine ungenutzte Scaffold-Klasse und zwei ungenutzte
+        Getter wurden entfernt.
+    -   **KISS:** Ein selbst geschriebener `FilterReader` zum
+        Überspringen einer BOM wurde durch einfache String-Verarbeitung
+        der größenbegrenzten Upload-Datei ersetzt. Der Import wird jetzt
+        in einer Transaktion abgeschlossen. Die Öffnungszeiten werden
+        einmal pro Anbieter aufgebaut.
+    -   **DRY:** Vier Kopien des Testcodes zum gleichzeitigen Starten
+        von N Requests wurden in einen gemeinsamen Helfer
+        (`Simultaneously`) überführt; die URL des Importberichts wird
+        nur noch an einer Stelle erstellt.
+
+    Bewusst beibehaltene, gerechtfertigte Komplexität: der zentrale
+    Schreibpfad, `CatalogService`, der blockweise Import mit Status
+    sowie die beiden Zuordnungen von Fehlermeldungen (jeweils zwei
+    Verbraucher, also noch unterhalb der „Rule of Three").
+
+    Bei diesem Schritt passierte ein Fehler, der korrigiert wurde: Ein
+    Commit wurde erstellt, obwohl die Kompilierung fehlgeschlagen war
+    (beim Entfernen der Getter war eine geschweifte Klammer verloren
+    gegangen). Der Fehler wurde sofort gefunden, behoben und der Commit
+    angepasst, bevor etwas gepusht wurde. Danach erfolgten Commits nur
+    noch nach erfolgreichem Build. Nach der Refaktorierung des Helfers
+    wurden die Race-Tests erneut geprüft: Alle fünf schlagen ohne Sperre
+    fehl.
+
+## Was der Mensch beigetragen hat
+
+-   Legte Umfang und Rahmenbedingungen fest: Einbindung von Ext JS,
+    Öffnungszeiten (zunächst keine, später erforderlich), Build-Tool und
+    Datenbank.
+-   Genehmigte den Plan und verlangte vor der Implementierung einen
+    Abgleich mit der Aufgabenstellung.
+-   Installierte das JDK, als sich herausstellte, dass auf dem Rechner
+    nur eine JRE vorhanden war. Der Assistent ist so konfiguriert, dass
+    er niemals Root-Rechte verwendet.
+
+## Was kritisch überprüft werden sollte
+
+Der gesamte Code wurde von der KI generiert und wie oben beschrieben
+durch Tests und tatsächliche Ausführung überprüft. Die
+Designentscheidungen sind in den ADRs erläutert ([ADRs](adr/README.md)),
+damit sie anhand ihrer jeweiligen Vorzüge beurteilt werden können.
+Folgende Bereiche sollten besonders sorgfältig geprüft werden:
+
+-   Die Sperrstrategie (siehe [ADR
+    0003](adr/0003-pessimistic-provider-lock.md))
+-   Die Importregeln für bereits überbuchte Legacy-Zeilen (siehe [ADR
+    0005](adr/0005-csv-import-policy.md))
+-   Die Umrechnung der Oberfläche in die Zeitzone des Anbieters
+    (siehe [ADR 0004](adr/0004-time-model.md))

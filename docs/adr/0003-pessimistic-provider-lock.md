@@ -1,63 +1,66 @@
-# 0003 – Overbooking is prevented by a pessimistic lock per provider
+# 0003 – Überbuchung wird durch eine pessimistische Sperre je Anbieter verhindert
 
-**Status:** accepted
+**Status:** angenommen
 
-## Context
+## Kontext
 
-Capacity is a property of a provider and a period: "at most N appointments in parallel at any time". Two concurrent
-bookings can each read "N−1 running" and both insert. That is a classic write-skew anomaly, and `READ COMMITTED`
-does not prevent it. A unique or exclusion constraint cannot express "at most N overlapping rows" for N > 1.
+Kapazität ist eine Eigenschaft eines Anbieters und eines Zeitraums: „höchstens N Termine gleichzeitig, zu jedem
+Zeitpunkt“. Zwei gleichzeitige Buchungen können beide „N−1 laufen“ lesen und beide einfügen. Das ist eine klassische
+Write-Skew-Anomalie, die `READ COMMITTED` nicht verhindert. Ein Unique- oder Exclusion-Constraint kann „höchstens N
+überlappende Zeilen“ für N > 1 nicht ausdrücken.
 
-## Decision
+## Entscheidung
 
-Every write to a provider's schedule (booking and CSV import) runs in one transaction that:
+Jeder Schreibvorgang am Terminplan eines Anbieters (Buchung und CSV-Import) läuft in einer Transaktion, die
 
-1. loads the provider row with `SELECT … FOR UPDATE` (`ProviderRepository.findByIdForUpdate`,
-   `@Lock(PESSIMISTIC_WRITE)`),
-2. loads the provider's appointments overlapping the candidate interval and checks the peak concurrency
+1. die Anbieterzeile mit `SELECT … FOR UPDATE` lädt (`ProviderRepository.findByIdForUpdate`,
+   `@Lock(PESSIMISTIC_WRITE)`, aufgerufen über `CatalogService.lockProvider`),
+2. die Termine des Anbieters lädt, die das Kandidatenintervall überlappen, und die Spitzenlast prüft
    (`CapacityCalculator`),
-3. inserts the appointment and commits, which releases the lock.
+3. den Termin einfügt und committet, wodurch die Sperre freigegeben wird.
 
-All writes go through `AppointmentScheduler.schedule`, which is annotated `@Transactional(propagation = MANDATORY)`
-so it cannot be called without a surrounding transaction. Suggestions are read without a lock. They are a snapshot,
-and a slot taken in the meantime makes the booking fail with **409**.
+Alle Schreibvorgänge laufen über `AppointmentScheduler.schedule`, annotiert mit
+`@Transactional(propagation = MANDATORY)`; ohne umgebende Transaktion lässt es sich nicht aufrufen. Vorschläge werden
+ohne Sperre gelesen. Sie sind eine Momentaufnahme, und ein inzwischen vergebener Termin lässt die Buchung mit **409**
+scheitern.
 
-### Alternatives considered
+### Betrachtete Alternativen
 
-| Option | Why not |
+| Option | Warum nicht |
 |---|---|
-| `SERIALIZABLE` isolation | Correct on PostgreSQL (SSI), but needs retry logic for serialization failures, and H2 behaves differently |
-| Optimistic `@Version` on provider, bumped per booking | Equivalent serialization, but needs retries; contention per provider is low either way |
-| PostgreSQL exclusion constraint | Only expresses capacity 1 |
-| Counter table per 15-minute slot with row locks or check constraints | Works for capacity N, but adds a redundant data structure that must be kept in sync with durations |
-| In-JVM `synchronized` or lock map | Breaks with more than one application instance |
+| Isolationsstufe `SERIALIZABLE` | Auf PostgreSQL korrekt (SSI), braucht aber Wiederholungslogik bei Serialisierungsfehlern, und H2 verhält sich anders |
+| Optimistische `@Version` am Anbieter, bei jeder Buchung erhöht | Gleichwertige Serialisierung, braucht aber Wiederholungen; die Konkurrenz je Anbieter ist so oder so gering |
+| PostgreSQL-Exclusion-Constraint | Drückt nur Kapazität 1 aus |
+| Zählertabelle je 15-Minuten-Slot mit Zeilensperren oder Check-Constraints | Funktioniert für Kapazität N, fügt aber eine redundante Datenstruktur hinzu, die mit den Dauern synchron gehalten werden muss |
+| `synchronized` oder Sperr-Map in der JVM | Funktioniert nicht mehr bei mehr als einer Anwendungsinstanz |
 
-### Waiting for the lock: identical on PostgreSQL and H2
+### Warten auf die Sperre: gleich auf PostgreSQL und H2
 
-- **Different defaults:** PostgreSQL waits for a row lock indefinitely, while H2 gives up after about 2 seconds
-  (`Timeout trying to lock table`). This was measured with a test that held the lock for 5 s.
-- **One explicit limit:** both databases therefore get the same limit, `appointments.lock-timeout-ms` (default
-  10 s). It is set on every pooled connection via `spring.datasource.hikari.connection-init-sql`, using each
-  database's own syntax: `SET lock_timeout = '…ms'` in PostgreSQL, `SET LOCK_TIMEOUT …` in H2.
-- **When the limit is hit,** the request gets **503** with `Retry-After: 1`, not a 500, and not a 409 either. A
-  timeout says nothing about capacity: the slot may well be free. Under normal load this never happens, because a
-  booking holds the lock for milliseconds.
+- **Unterschiedliche Standards:** PostgreSQL wartet unbegrenzt auf eine Zeilensperre, H2 gibt nach etwa 2 Sekunden
+  auf (`Timeout trying to lock table`). Gemessen mit einem Test, der die Sperre 5 s hielt.
+- **Eine ausdrückliche Grenze:** Beide Datenbanken erhalten deshalb dieselbe Grenze, `appointments.lock-timeout-ms`
+  (Standard 10 s). Sie wird auf jeder Pool-Verbindung über `spring.datasource.hikari.connection-init-sql` gesetzt, in
+  der jeweiligen Syntax: `SET lock_timeout = '…ms'` in PostgreSQL, `SET LOCK_TIMEOUT …` in H2.
+- **Wird die Grenze erreicht,** erhält die Anfrage **503** mit `Retry-After: 1`, kein 500 und auch kein 409. Ein
+  Timeout sagt nichts über die Kapazität aus: Der Termin kann durchaus frei sein. Unter normaler Last passiert das nie,
+  weil eine Buchung die Sperre nur Millisekunden hält.
 
-## Consequences
+## Konsequenzen
 
-- Correct across several application instances, because the lock lives in the database. Works on PostgreSQL and H2.
-- Bookings for the **same provider** are serialized. A booking takes milliseconds, so throughput per provider is far
-  beyond what an IT service shop needs. Different providers don't block each other.
-- **Tests on both databases** check the behaviour, and each one was confirmed to fail when the lock is removed:
-  - `ConcurrentBookingTest` (PostgreSQL): parallel bookings, an import racing bookings, identical requests, parallel
-    re-imports. Without the lock, 10 of 20 parallel bookings got through at capacity 2.
-  - `ConcurrentBookingTest.bookingAndImportWaitForTheProviderLockInsteadOfFailing`: while another transaction holds
-    the lock, a booking and an import **wait** for it. This proves they really take the lock. The opposite case,
-    `otherProvidersAreNotBlocked`, shows a booking at another provider does not wait.
-  - `AppointmentApiTest.parallelHttpRequestsGet201UntilCapacityThen409`: at HTTP level, the losers of the race get
-    **409** and exactly as many requests as the capacity get 201.
-  - `H2ProfileTest`: the same parallel-booking and lock-wait checks on H2. Without the lock, H2 overbooked too (3 at
-    capacity 2).
-  - `LockTimeoutTest`: a lock timeout becomes 503 + Retry-After.
-- The unique key `(provider, service, customer, start)` is a second safety net against duplicate submissions. It maps
-  to 409.
+- Korrekt über mehrere Anwendungsinstanzen hinweg, weil die Sperre in der Datenbank liegt. Funktioniert auf PostgreSQL
+  und H2.
+- Buchungen für **denselben Anbieter** werden serialisiert. Eine Buchung dauert Millisekunden, der Durchsatz je Anbieter
+  liegt also weit über dem Bedarf eines IT-Service-Betriebs. Verschiedene Anbieter blockieren sich nicht.
+- **Tests auf beiden Datenbanken** prüfen das Verhalten; für jeden wurde bestätigt, dass er ohne Sperre fehlschlägt:
+  - `ConcurrentBookingTest` (PostgreSQL): parallele Buchungen, ein Import im Wettlauf mit Buchungen, identische
+    Anfragen, parallele Neu-Importe. Ohne Sperre gingen bei Kapazität 2 10 von 20 parallelen Buchungen durch.
+  - `ConcurrentBookingTest.bookingAndImportWaitForTheProviderLockInsteadOfFailing`: Solange eine andere Transaktion die
+    Sperre hält, **warten** Buchung und Import darauf. Das belegt, dass sie die Sperre tatsächlich nehmen. Der
+    Gegenfall `otherProvidersAreNotBlocked` zeigt, dass eine Buchung bei einem anderen Anbieter nicht wartet.
+  - `AppointmentApiTest.parallelHttpRequestsGet201UntilCapacityThen409`: Auf HTTP-Ebene erhalten die Verlierer des
+    Wettlaufs **409**, und genau so viele Anfragen wie die Kapazität erhalten 201.
+  - `H2ProfileTest`: dieselben Prüfungen für parallele Buchungen und das Warten auf die Sperre auf H2. Ohne Sperre hat
+    auch H2 überbucht (3 bei Kapazität 2).
+  - `LockTimeoutTest`: Ein Sperr-Timeout wird zu 503 + Retry-After.
+- Der Unique-Key `(provider, service, customer, start)` ist ein zweites Sicherheitsnetz gegen doppelt abgeschickte
+  Buchungen. Er wird auf 409 abgebildet.

@@ -1,53 +1,57 @@
-# 0004 – UTC instants, half-open intervals, peak-concurrency check
+# 0004 – UTC-Instants, halboffene Intervalle, Prüfung der Spitzenlast
 
-**Status:** accepted
+**Status:** angenommen
 
-## Context
+## Kontext
 
-The CSV dates carry a UTC offset (`2026-11-02T08:00Z`), and the API uses ISO-8601 `date-time`. Capacity must hold
-"throughout the entire service duration", so checking only the start time is not enough.
+Die CSV-Daten enthalten einen UTC-Offset (`2026-11-02T08:00Z`), und die API verwendet ISO-8601-`date-time`. Die
+Kapazität muss „während der gesamten Dienstleistungsdauer“ reichen; nur den Startzeitpunkt zu prüfen genügt also nicht.
 
-## Decision
+## Entscheidung
 
-- **Time handling:** all times are `java.time.Instant`, stored as `timestamp with time zone`, with JDBC time zone set
-  to UTC. Inputs may use any offset. Outputs are always `Z`. A CSV date without an offset is **rejected**
-  (`INVALID_DATE`) rather than silently interpreted.
-- **Grid:** the 15-minute grid is defined in UTC: a valid start has `epochSecond % 900 == 0` and no nanoseconds.
-  This is identical to local quarter hours for all whole-hour and half-hour time zones, including Europe/Berlin.
-- **Intervals** are half-open, `[start, end)`. Back-to-back appointments never overlap.
-- **End time:** `end = start + duration` is computed by the server and **stored**. Overlap queries become
-  `start < :to AND end > :from` on an index `(provider_id, start_at, end_at)`, and changing a configured duration
-  does not move existing appointments.
-- **Capacity check, peak concurrency:** this is a sweep line over the start and end events of the appointments that overlap the
-  candidate, with ends sorted before starts at equal instants. It yields the **peak** parallel load within the
-  candidate, and the candidate fits if `peak < capacity`. This catches loads that build up after the candidate's
-  start, and it does not over-count appointments that each overlap the candidate but not each other.
-  - This is equivalent to checking every 15-minute slot the candidate covers: load only changes at appointment
-    boundaries, and those are exactly the events the sweep visits.
-  - Unlike a slot table, it stays exact for any duration (see below).
-- **Past:** new bookings must not start in the past (`400`), and suggestions start at
-  `max(from, now)`. Imported legacy appointments may lie in the past, because they are history. "Now" comes from an
-  injected `Clock`, and tests pin it to 2026-10-28T12:00Z so they don't break once the sample dates have passed.
-- **Durations that are not multiples of 15 minutes:** these are supported without rounding. Only *starts* are bound
-  to the grid. The capacity check works on exact intervals, not on 15-minute buckets, so a future 20-minute service
-  (08:00–08:20) correctly blocks a start at 08:15 and frees one at 08:30. This is covered by `SlotFinderTest` and
-  `CatalogExtensibilityTest`.
-  - This yields the same results as "rounding the occupied slots up". Every other appointment also starts on the
-    grid, so no grid start can fall between 08:20 and 08:30.
-  - Validation at configuration time is therefore unnecessary, and the stored end time stays the real one.
-- **Suggestions:** the search rounds `from` up to the grid, steps in 15 minutes, keeps starts whose end is ≤ `to`,
-  and loads the overlapping appointments once per search. The range is limited to 31 days.
-  - *Task says:* the spec only defines `to` as *"Ende des Suchzeitraums"*, and the task says *"Eingabe eines
-    gewünschten Zeitraums"*. Whether `to` limits the start or the end is left open.
-  - We read "end of the search period" as: the whole appointment lies within the period.
-- **Pure core:** the `scheduling` package has no Spring or JPA dependencies and is unit-tested in isolation.
+- **Zeitbehandlung:** Alle Zeiten sind `java.time.Instant`, gespeichert als `timestamp with time zone`, mit der
+  JDBC-Zeitzone UTC. Eingaben dürfen einen beliebigen Offset haben, Ausgaben sind immer `Z`. Ein CSV-Datum ohne Offset
+  wird **abgelehnt** (`INVALID_DATE`), statt stillschweigend interpretiert zu werden.
+- **Raster:** Das 15-Minuten-Raster ist in UTC definiert: Ein gültiger Start hat `epochSecond % 900 == 0` und keine
+  Nanosekunden. Für alle Zeitzonen mit ganz- oder halbstündigem Versatz, einschließlich Europe/Berlin, ist das
+  identisch mit lokalen Viertelstunden.
+- **Intervalle** sind halboffen, `[Start, Ende)`. Unmittelbar aufeinanderfolgende Termine überschneiden sich nie.
+- **Endzeit:** `Ende = Start + Dauer` berechnet der Server und **speichert** sie. Überschneidungsabfragen werden so zu
+  `start < :to AND end > :from` über einen Index `(provider_id, start_at, end_at)`, und eine geänderte Dauer in der
+  Konfiguration verschiebt keine bestehenden Termine.
+- **Kapazitätsprüfung, Spitzenlast:** Ein Sweep-Line-Verfahren läuft über die Start- und Endereignisse der Termine, die
+  den Kandidaten überlappen; bei gleichem Zeitpunkt kommen Enden vor Starts. Es liefert die **höchste** parallele Last
+  innerhalb des Kandidaten, und der Kandidat passt, wenn `Spitze < Kapazität`. So werden Lasten erkannt, die sich erst
+  nach dem Start des Kandidaten aufbauen, und Termine, die jeweils den Kandidaten, aber nicht einander überlappen,
+  werden nicht doppelt gezählt.
+  - Das ist gleichwertig damit, jeden 15-Minuten-Slot zu prüfen, den der Kandidat abdeckt: Die Last ändert sich nur an
+    Termingrenzen, und genau diese Ereignisse besucht das Verfahren.
+  - Anders als eine Slot-Tabelle bleibt es für jede Dauer exakt (siehe unten).
+- **Vergangenheit:** Neue Buchungen dürfen nicht in der Vergangenheit beginnen (`400`), und Vorschläge beginnen bei
+  `max(from, jetzt)`. Importierte Bestandstermine dürfen in der Vergangenheit liegen, denn sie sind Historie. „Jetzt“
+  kommt aus einer injizierten `Clock`; Tests setzen sie fest auf 2026-10-28T12:00Z, damit sie nicht brechen, wenn die
+  Beispieldaten in der Vergangenheit liegen.
+- **Dauern, die keine Vielfachen von 15 Minuten sind,** werden ohne Rundung unterstützt. Nur *Startzeiten* sind an das
+  Raster gebunden. Die Kapazitätsprüfung arbeitet mit exakten Intervallen, nicht mit 15-Minuten-Fächern; eine künftige
+  20-minütige Dienstleistung (08:00–08:20) blockiert also korrekt einen Start um 08:15 und gibt 08:30 frei. Das prüfen
+  `SlotFinderTest` und `CatalogExtensibilityTest`.
+  - Das Ergebnis ist dasselbe wie beim „Aufrunden der belegten Slots“. Auch jeder andere Termin beginnt im Raster,
+    also kann kein Rasterstart zwischen 08:20 und 08:30 liegen.
+  - Eine Prüfung schon bei der Konfiguration ist daher unnötig, und die gespeicherte Endzeit bleibt die echte.
+- **Vorschläge:** Die Suche rundet `from` auf das Raster auf, geht in 15-Minuten-Schritten vor, behält Starts, deren
+  Ende ≤ `to` ist, und lädt die überlappenden Termine einmal je Suche. Der Zeitraum ist auf 31 Tage begrenzt.
+  - *Die Aufgabe sagt:* Die Spezifikation definiert `to` nur als *"Ende des Suchzeitraums"*, und die Aufgabe nennt die
+    *"Eingabe eines gewünschten Zeitraums"*. Ob `to` den Start oder das Ende begrenzt, bleibt offen.
+  - Wir lesen „Ende des Suchzeitraums“ so: Der ganze Termin liegt innerhalb des Zeitraums.
+- **Reiner Kern:** Das Paket `scheduling` hat keine Abhängigkeiten zu Spring oder JPA und wird isoliert per Unit-Test
+  geprüft.
 
-## Consequences
+## Konsequenzen
 
-- **Time zones:** the API and the CSV stay UTC. The UI shows and accepts times in the **provider's** time zone, which
-  the API exposes per provider (`timeZone`). It does not use the browser's zone, because a customer abroad still books
-  in the shop's local time.
-  - Conversion uses the browser's `Intl` time-zone data, including the DST switch days. Since the switch to CET on
-    2026-10-25, `2026-11-02T08:00Z` is shown as 09:00.
-- **Opening hours** apply on top of these rules, per provider and in local time, with daylight-saving handling. See
+- **Zeitzonen:** API und CSV bleiben in UTC. Die Oberfläche zeigt und erwartet Zeiten in der Zeitzone des
+  **Anbieters**, die die API je Anbieter liefert (`timeZone`). Sie verwendet nicht die Zeitzone des Browsers, weil auch
+  ein Kunde im Ausland in der Ortszeit des Betriebs bucht.
+  - Die Umrechnung nutzt die `Intl`-Zeitzonendaten des Browsers, einschließlich der Umstellungstage. Seit der Umstellung
+    auf MEZ am 2026-10-25 wird `2026-11-02T08:00Z` als 09:00 angezeigt.
+- **Öffnungszeiten** gelten zusätzlich zu diesen Regeln, je Anbieter, in Ortszeit und mit Sommerzeit. Siehe
   [ADR 0007](0007-opening-hours.md).

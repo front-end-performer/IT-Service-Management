@@ -1,69 +1,72 @@
-# Deviations register
+# Register der Abweichungen
 
-The task permits deviations from the specification *"where appropriate, provided that they are clearly documented
-and justified"* (task text: *"…das von der SPezifikation abgewichen werden kann, sollte in diesen Fällen für die
-Nachvollziehbarkeit gestattet sein."*). This page lists **every** place where the implementation differs from
-[`task/README.de.md`](task/README.de.md) or from the original `rest-api-spec.yml` (first commit). Each entry gives the
-original, the change, the reason, the ADR with the full rationale, and the test that pins it down.
+Die Aufgabe erlaubt Abweichungen von der Spezifikation, sofern sie nachvollziehbar dokumentiert und begründet sind
+(Aufgabentext: *"…das von der SPezifikation abgewichen werden kann, sollte in diesen Fällen für die
+Nachvollziehbarkeit gestattet sein."*). Diese Seite listet **jede** Stelle, an der die Umsetzung von
+[`task/README.de.md`](task/README.de.md) oder von der ursprünglichen `rest-api-spec.yml` (erster Commit) abweicht. Jeder
+Eintrag nennt das Original, die Änderung, die Begründung, das ADR mit der ausführlichen Herleitung und den Test, der
+das Verhalten festhält.
 
-The list of API changes was derived mechanically: the original and current `rest-api-spec.yml` were parsed and
-compared. That comparison yields **only additions**. No path, parameter, field or status code of the original spec
-was removed or changed in meaning. In the YAML, every addition is marked *"Erweiterung"*.
-`SpecContractTest` (paths and fields) and `SpecConformance` (every status code and API header of every API test response) keep the YAML and the code in sync.
+Die API-Änderungen wurden maschinell ermittelt: Die ursprüngliche und die aktuelle `rest-api-spec.yml` wurden geparst
+und verglichen. Der Vergleich ergibt **ausschließlich Ergänzungen**. Kein Pfad, Parameter, Feld oder Statuscode der
+Original-Spezifikation wurde entfernt oder in seiner Bedeutung geändert. In der YAML ist jede Ergänzung mit
+„Erweiterung“ markiert. `SpecContractTest` (Pfade und Felder) und `SpecConformance` (jeder Statuscode und API-Header
+jeder Antwort in den API-Tests) halten YAML und Code synchron.
 
-Entries fall into three groups:
-- **A – API extensions** add something the spec does not have. Clients that only know the original spec are
-  unaffected.
-- **B – Additional status codes** cover situations the spec leaves undefined.
-- **C – Interpretations** decide what the spec or task leave open. These are not deviations in the strict sense, but
-  they are listed so the reading is traceable.
+Die Einträge fallen in drei Gruppen:
+- **A – API-Erweiterungen** ergänzen etwas, das die Spezifikation nicht hat. Clients, die nur die Original-Spezifikation
+  kennen, sind nicht betroffen.
+- **B – Zusätzliche Statuscodes** decken Situationen ab, die die Spezifikation offenlässt.
+- **C – Auslegungen** entscheiden, was Spezifikation oder Aufgabe offenlassen. Das sind keine Abweichungen im engeren
+  Sinn, sie stehen hier aber, damit die Lesart nachvollziehbar ist.
 
-**D – Deviations from the task** are listed separately at the end.
+**D – Abweichungen von der Aufgabe** stehen gesondert am Ende.
 
-## A – API extensions (additive)
+## A – API-Erweiterungen (ergänzend)
 
-| # | Original | Change | Why | ADR | Test |
+| # | Original | Änderung | Warum | ADR | Test |
 |---|---|---|---|---|---|
-| A1 | No import operation, although the task requires a CSV import | `POST /it-services/{serviceId}/appointment-imports` (multipart), `GET …/appointment-imports[/{importId}]`; definitions `importReport`, `importRejection` | The task requires the import and an unambiguous provider assignment. The provider in the path provides that assignment, and the report makes error handling traceable. | [0005](adr/0005-csv-import-policy.md), [0006](adr/0006-api-deviations.md) | `ImportAcceptanceTest` I1–I9, `ImportApiTest` |
-| A2 | `appointment` has no origin | `appointment.source` = `BOOKED` / `IMPORTED` | Staff can tell legacy appointments from new bookings (traceability of imports). | [0006](adr/0006-api-deviations.md) | L1, `ImportApiTest` |
-| A3 | Status codes without an error body | RFC 9457 `application/problem+json` body (`problem` definition) on every error | Clients and the UI need the reason, e.g. "No capacity left for LAP at …". | [0006](adr/0006-api-deviations.md) | `AppointmentApiTest.errorsAreProblemDetails` |
-| A4 | `201` without headers | `Location` header on created appointments and imports | Standard REST practice. The body is unchanged. | [0006](adr/0006-api-deviations.md) | B1 |
-| A5 | `GET …/appointments` returns a plain list | **Opt-in** paging: `page`, `size` (1–500), total in `X-Total-Count`. Without `page`/`size`, **all** appointments are returned, exactly as specified. | The list grows with every booking and import, so the UI must be able to page. Paging is opt-in so that a client following the original spec never silently receives a truncated list. | [0006](adr/0006-api-deviations.md) | `AppointmentApiTest.pagesThroughAppointmentsWithTotalCount` |
-| A6 | `itService` = id, name, capacity | Additional `timeZone` and `openingHours` | The UI shows and accepts times in the provider's local time and explains missing slots. Needed because of D1. | [0006](adr/0006-api-deviations.md), [0007](adr/0007-opening-hours.md) | `AppointmentApiTest.exposesTimeZoneAndOpeningHoursOfEachProvider` |
-| A7 | `appointmentRequest.customerNumber` has no length | `minLength: 1`, `maxLength: 64`, also enforced for CSV rows (`INVALID_CUSTOMER_NUMBER`) | Matches the storage column. Without the limit, a single overly long CSV value made the whole import fail with 409. Found while compiling this register, now rejected row by row. | [0005](adr/0005-csv-import-policy.md) | `rejectsBodiesWithMissingFields`, `ImportApiTest.rejectsATooLongCustomerNumberAsARowNotTheWholeFile` |
-| A8 | No import exists, so no import outcome | `importReport.status` (`RUNNING`/`COMPLETED`/`FAILED`) and `failureMessage` | An aborted import must be recognisable as such and say where it stopped; re-importing is safe. | [0005](adr/0005-csv-import-policy.md) | `ChunkedImportTest.unexpectedFailureMarksTheImportFailedAndReimportIsSafe` |
+| A1 | Keine Import-Operation, obwohl die Aufgabe einen CSV-Import verlangt | `POST /it-services/{serviceId}/appointment-imports` (Multipart), `GET …/appointment-imports[/{importId}]`; Definitionen `importReport`, `importRejection` | Die Aufgabe verlangt den Import und eine eindeutige Zuordnung zum Anbieter. Der Anbieter im Pfad liefert diese Zuordnung, und der Bericht macht die Fehlerbehandlung nachvollziehbar. | [0005](adr/0005-csv-import-policy.md), [0006](adr/0006-api-deviations.md) | `ImportAcceptanceTest` I1–I9, `ImportApiTest` |
+| A2 | `appointment` hat keine Herkunft | `appointment.source` = `BOOKED` / `IMPORTED` | Mitarbeiter können Bestandstermine von neuen Buchungen unterscheiden (Nachvollziehbarkeit der Importe). | [0006](adr/0006-api-deviations.md) | L1, `ImportApiTest` |
+| A3 | Statuscodes ohne Fehlerinhalt | RFC 9457 `application/problem+json` (Definition `problem`) bei jedem Fehler | Clients und Oberfläche brauchen den Grund, z. B. „No capacity left for LAP at …“. | [0006](adr/0006-api-deviations.md) | `AppointmentApiTest.errorsAreProblemDetails` |
+| A4 | `201` ohne Header | Header `Location` bei angelegten Terminen und Importen | Übliche REST-Praxis. Der Inhalt ist unverändert. | [0006](adr/0006-api-deviations.md) | B1 |
+| A5 | `GET …/appointments` liefert eine einfache Liste | **Optionales** Paging: `page`, `size` (1–500), Gesamtzahl in `X-Total-Count`. Ohne `page`/`size` kommen **alle** Termine, genau wie spezifiziert. | Die Liste wächst mit jeder Buchung und jedem Import, die Oberfläche muss also blättern können. Paging ist optional, damit ein Client, der der Original-Spezifikation folgt, nie unbemerkt eine gekürzte Liste erhält. | [0006](adr/0006-api-deviations.md) | `AppointmentApiTest.pagesThroughAppointmentsWithTotalCount` |
+| A6 | `itService` = id, name, capacity | Zusätzlich `timeZone` und `openingHours` | Die Oberfläche zeigt und erwartet Zeiten in der Ortszeit des Anbieters und erklärt fehlende Termine. Nötig wegen D1. | [0006](adr/0006-api-deviations.md), [0007](adr/0007-opening-hours.md) | `AppointmentApiTest.exposesTimeZoneAndOpeningHoursOfEachProvider` |
+| A7 | `appointmentRequest.customerNumber` hat keine Länge | `minLength: 1`, `maxLength: 64`, auch für CSV-Zeilen durchgesetzt (`INVALID_CUSTOMER_NUMBER`) | Entspricht der Speicherspalte. Ohne die Grenze ließ ein einziger zu langer CSV-Wert den ganzen Import mit 409 scheitern. Beim Erstellen dieses Registers gefunden, jetzt zeilenweise abgelehnt. | [0005](adr/0005-csv-import-policy.md) | `rejectsBodiesWithMissingFields`, `ImportApiTest.rejectsATooLongCustomerNumberAsARowNotTheWholeFile` |
+| A8 | Es gibt keinen Import, also auch kein Importergebnis | `importReport.status` (`RUNNING`/`COMPLETED`/`FAILED`) und `failureMessage` | Ein abgebrochener Import muss als solcher erkennbar sein und sagen, wo er stehen blieb; ein erneuter Import ist sicher. | [0005](adr/0005-csv-import-policy.md) | `ChunkedImportTest.unexpectedFailureMarksTheImportFailedAndReimportIsSafe` |
 
-## B – Additional status codes
+## B – Zusätzliche Statuscodes
 
-| # | Situation (undefined in the spec) | Response | Why | ADR | Test |
+| # | Situation (in der Spezifikation undefiniert) | Antwort | Warum | ADR | Test |
 |---|---|---|---|---|---|
-| B1 | `GET …/appointments` with an unparsable date, `from > to`, or invalid `page`/`size` | `400` | Otherwise undefined. The spec has no `400` for this operation. | [0006](adr/0006-api-deviations.md) | `suggestionsValidateTheSearchRange`, `pagesThroughAppointmentsWithTotalCount` |
-| B2 | Suggestion range over 31 days | `400` (already specified for an invalid range) | Prevents unbounded computations. | [0004](adr/0004-time-model.md) | `suggestionsValidateTheSearchRange` |
-| B3 | Booking start in the past | `400` | A past slot can never be available. See D2. | [0004](adr/0004-time-model.md) | `rejectsBookingsInThePast` |
-| B4 | Booking outside opening hours or past closing time | `400` | The request can never succeed, so it is not a `409`. See D1. | [0007](adr/0007-opening-hours.md) | `rejectsBookingsOutsideOpeningHoursOrPastClosing` |
-| B5 | Same customer, service and start booked twice | `409` | A variant of "Termin nicht verfügbar". Protects against double clicks and retries. | [0006](adr/0006-api-deviations.md) | `sameCustomerServiceAndStartIsADuplicate`, `identicalParallelRequestsCreateExactlyOneAppointment` |
-| B6 | Provider lock not obtained within `appointments.lock-timeout-ms` (10 s) | `503` + `Retry-After: 1` | A timeout says nothing about capacity (so not `409`), and it is retryable (so not `500`). | [0003](adr/0003-pessimistic-provider-lock.md) | `LockTimeoutTest` |
-| B7 | CSV upload larger than 5 MB | `413` problem detail | Bounded request size. Verified against the packaged JAR (MockMvc does not enforce the limit). | [0006](adr/0006-api-deviations.md) | Manual check, see [ai-usage.md](ai-usage.md) |
-| B8 | An import aborted by an unexpected error after it was recorded | `500` problem detail with `importId` and `Location` to the `FAILED` report. A lock timeout during an import gives `503` and is also recorded as `FAILED`. | The client learns that the import was aborted, where, and that re-importing is safe. Internal details stay in the server log. | [0005](adr/0005-csv-import-policy.md) | `ChunkedImportTest`, `LockTimeoutTest.importThatTimesOutIsAnsweredWith503AndRecordedAsFailed` |
+| B1 | `GET …/appointments` mit nicht lesbarem Datum, `from > to` oder ungültigem `page`/`size` | `400` | Sonst undefiniert. Die Spezifikation hat für diese Operation kein `400`. | [0006](adr/0006-api-deviations.md) | `suggestionsValidateTheSearchRange`, `pagesThroughAppointmentsWithTotalCount` |
+| B2 | Vorschlagszeitraum über 31 Tage | `400` (für einen ungültigen Zeitraum bereits spezifiziert) | Verhindert unbegrenzte Berechnungen. | [0004](adr/0004-time-model.md) | `suggestionsValidateTheSearchRange` |
+| B3 | Buchungsstart in der Vergangenheit | `400` | Ein vergangener Termin kann nie verfügbar sein. Siehe D2. | [0004](adr/0004-time-model.md) | `rejectsBookingsInThePast` |
+| B4 | Buchung außerhalb der Öffnungszeiten oder über die Schließzeit hinaus | `400` | Die Anfrage kann nie gelingen, also kein `409`. Siehe D1. | [0007](adr/0007-opening-hours.md) | `rejectsBookingsOutsideOpeningHoursOrPastClosing` |
+| B5 | Gleicher Kunde, Dienst und Start zweimal gebucht | `409` | Eine Variante von „Termin nicht verfügbar“. Schützt vor Doppelklicks und Wiederholungen. | [0006](adr/0006-api-deviations.md) | `sameCustomerServiceAndStartIsADuplicate`, `identicalParallelRequestsCreateExactlyOneAppointment` |
+| B6 | Anbietersperre nicht innerhalb von `appointments.lock-timeout-ms` (10 s) erlangt | `503` + `Retry-After: 1` | Ein Timeout sagt nichts über die Kapazität aus (also kein `409`) und ist wiederholbar (also kein `500`). | [0003](adr/0003-pessimistic-provider-lock.md) | `LockTimeoutTest` |
+| B7 | CSV-Upload größer als 5 MB | `413` als Problem-Detail | Begrenzte Anfragegröße. Gegen die gepackte JAR geprüft (MockMvc setzt die Grenze nicht durch). | [0006](adr/0006-api-deviations.md) | Manuelle Prüfung, siehe [ai-usage.md](ai-usage.md) |
+| B8 | Ein Import, der nach seiner Erfassung durch einen unerwarteten Fehler abbricht | `500` als Problem-Detail mit `importId` und `Location` zum `FAILED`-Bericht. Ein Sperr-Timeout während eines Imports ergibt `503` und wird ebenfalls als `FAILED` erfasst. | Der Client erfährt, dass der Import abgebrochen ist, wo, und dass ein erneuter Import sicher ist. Interne Details bleiben im Server-Log. | [0005](adr/0005-csv-import-policy.md) | `ChunkedImportTest`, `LockTimeoutTest.importThatTimesOutIsAnsweredWith503AndRecordedAsFailed` |
 
-## C – Interpretations of open points
+## C – Auslegungen offener Punkte
 
-| # | Open point (quote) | Our reading | Why | ADR | Test |
+| # | Offener Punkt (Zitat) | Unsere Lesart | Warum | ADR | Test |
 |---|---|---|---|---|---|
-| C1 | Spec `to`: *"Ende des Suchzeitraums"* | A suggestion must **end** by `to` | The appointment lies within the period the customer entered. | [0004](adr/0004-time-model.md) | S1, S4 |
-| C2 | Spec `from`/`to`: *"… inklusive"* | Every appointment **running** at some point of `[from, to]` | This is what staff mean by "appointments on Monday", including one already running at `from`. | [0006](adr/0006-api-deviations.md) | L2 |
-| C3 | Task: *"Eindeutige Kennung"*. Spec example `id: DIA`, `code: DIA` | `repairServiceId` = code, unique **per provider**, always resolved with the provider in the path | Follows the spec example. It is the same key as the CSV, stable and readable. | [0002](adr/0002-configuration-driven-catalog.md) | B5, S9 |
-| C4 | Task: *"…nachvollziehbar behandeln"* (no mode, no order) | **Partial** import in **file order**, in chunks of 100 rows | One bad row does not block the rest, and bookings are not blocked by large files. | [0005](adr/0005-csv-import-policy.md) | I3, I5, `ChunkedImportTest` |
-| C5 | Task: the import must assign the file *"eindeutig"* | The provider comes from the request path, **never** from the file name | The sample files' names are swapped relative to their content. | [0005](adr/0005-csv-import-policy.md) | `importingIntoTheProviderNamedInTheFileNameRejectsForeignServiceCodes` |
-| C6 | Spec examples `09:00:00Z`, CSV `08:00Z` | Inputs with or without seconds and with any offset; outputs always UTC `…Z` | Both formats occur in the original material. | [0006](adr/0006-api-deviations.md) | `acceptsTimesWithoutSeconds`, `acceptsStartWithOffsetAndStoresUtc` |
+| C1 | Spezifikation `to`: *"Ende des Suchzeitraums"* | Ein Vorschlag muss bis `to` **enden** | Der Termin liegt innerhalb des Zeitraums, den der Kunde eingegeben hat. | [0004](adr/0004-time-model.md) | S1, S4 |
+| C2 | Spezifikation `from`/`to`: *"… inklusive"* | Jeder Termin, der zu irgendeinem Zeitpunkt in `[from, to]` **läuft** | Das meinen Mitarbeiter mit „Termine am Montag“, einschließlich eines Termins, der bei `from` schon läuft. | [0006](adr/0006-api-deviations.md) | L2 |
+| C3 | Aufgabe: *"Eindeutige Kennung"*. Beispiel der Spezifikation `id: DIA`, `code: DIA` | `repairServiceId` = Code, eindeutig **je Anbieter**, immer zusammen mit dem Anbieter im Pfad aufgelöst | Folgt dem Beispiel der Spezifikation. Derselbe Schlüssel wie in der CSV, stabil und lesbar. | [0002](adr/0002-configuration-driven-catalog.md) | B5, S9 |
+| C4 | Aufgabe: *"…nachvollziehbar behandeln"* (kein Modus, keine Reihenfolge) | **Teilimport** in **Dateireihenfolge**, in Abschnitten zu 100 Zeilen | Eine fehlerhafte Zeile blockiert den Rest nicht, und große Dateien blockieren keine Buchungen. | [0005](adr/0005-csv-import-policy.md) | I3, I5, `ChunkedImportTest` |
+| C5 | Aufgabe: Der Import muss die Datei *"eindeutig"* zuordnen | Der Anbieter kommt aus dem Anfragepfad, **nie** aus dem Dateinamen | Die Namen der Beispieldateien sind gegenüber ihrem Inhalt vertauscht. | [0005](adr/0005-csv-import-policy.md) | `importingIntoTheProviderNamedInTheFileNameRejectsForeignServiceCodes` |
+| C6 | Beispiele der Spezifikation `09:00:00Z`, CSV `08:00Z` | Eingaben mit oder ohne Sekunden und mit beliebigem Offset; Ausgaben immer UTC `…Z` | Beide Formate kommen im Originalmaterial vor. | [0006](adr/0006-api-deviations.md) | `acceptsTimesWithoutSeconds`, `acceptsStartWithOffsetAndStoresUtc` |
 
-## D – Deviations from the task
+## D – Abweichungen von der Aufgabe
 
-| # | Task says | Change | Why | ADR | Test |
+| # | Aufgabe sagt | Änderung | Warum | ADR | Test |
 |---|---|---|---|---|---|
-| D1 | No opening hours defined | Opening hours **per provider**, in local time (`Europe/Berlin`) with daylight saving handled. An appointment may not run past closing time or across midnight. Applies to suggestions, bookings and imports. | Without them, slots at 03:00 or on Sundays are offered. The configured hours contain all 40 legacy appointments. | [0007](adr/0007-opening-hours.md) | `OpeningHoursTest`, `suggestionsFollowEachProvidersOpeningHours`, `rejectsImportedAppointmentsOutsideOpeningHours` |
-| D2 | Nothing about past dates | No suggestions or bookings in the past. Imports may be historic. | A past slot can never be offered. Legacy appointments are history. | [0004](adr/0004-time-model.md) | `rejectsBookingsInThePast`, `neverSuggestsPastSlots` |
-| D3 | `docker-compose.yml` with `postgres:11-alpine`, port `5432` | `postgres:17-alpine`, port bound to `127.0.0.1` only, port overridable with `DB_PORT` (default `5432`, also read by the application). Obsolete `version` key removed. Database name, user and password unchanged. | PostgreSQL 11 has been end-of-life since November 2023. The database should not be reachable from the network. A locally installed PostgreSQL often holds 5432; without `DB_PORT` the app then silently connects to it and fails with a misleading authentication error. | [0001](adr/0001-technology-stack.md) | All integration tests run on PostgreSQL 17 |
+| D1 | Keine Öffnungszeiten definiert | Öffnungszeiten **je Anbieter**, in Ortszeit (`Europe/Berlin`) mit Sommerzeit. Ein Termin darf nicht über die Schließzeit oder über Mitternacht laufen. Gilt für Vorschläge, Buchungen und Importe. | Ohne sie werden Termine um 03:00 oder an Sonntagen angeboten. Die konfigurierten Zeiten umfassen alle 40 Bestandstermine. | [0007](adr/0007-opening-hours.md) | `OpeningHoursTest`, `suggestionsFollowEachProvidersOpeningHours`, `rejectsImportedAppointmentsOutsideOpeningHours` |
+| D2 | Nichts zu vergangenen Zeitpunkten | Keine Vorschläge oder Buchungen in der Vergangenheit. Importe dürfen historisch sein. | Ein vergangener Termin kann nie angeboten werden. Bestandstermine sind Historie. | [0004](adr/0004-time-model.md) | `rejectsBookingsInThePast`, `neverSuggestsPastSlots` |
+| D3 | `docker-compose.yml` mit `postgres:11-alpine`, Port `5432` | `postgres:17-alpine`, Port nur an `127.0.0.1` gebunden, Port über `DB_PORT` änderbar (Standard `5432`, wird auch von der Anwendung gelesen). Veralteter Schlüssel `version` entfernt. Datenbankname, Benutzer und Passwort unverändert. | PostgreSQL 11 wird seit November 2023 nicht mehr unterstützt. Die Datenbank soll nicht aus dem Netz erreichbar sein. Ein lokal installiertes PostgreSQL belegt oft 5432; ohne `DB_PORT` verbindet sich die Anwendung dann unbemerkt damit und scheitert mit einem irreführenden Authentifizierungsfehler. | [0001](adr/0001-technology-stack.md) | Alle Integrationstests laufen auf PostgreSQL 17 |
 
-Nothing else differs: all paths, parameters, field names, required fields and status codes of the original spec
-behave as specified. This is enforced by `SpecContractTest`, `SpecConformance` and the acceptance suite.
+Sonst unterscheidet sich nichts: Alle Pfade, Parameter, Feldnamen, Pflichtfelder und Statuscodes der
+Original-Spezifikation verhalten sich wie spezifiziert. Das sichern `SpecContractTest`, `SpecConformance` und die
+Abnahme-Suite.
