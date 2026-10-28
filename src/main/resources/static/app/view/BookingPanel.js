@@ -1,5 +1,6 @@
 /**
  * Customer view: provider -> service -> period -> suggestions -> book.
+ * Times are shown and entered in the provider's local time zone.
  */
 Ext.define('Appointments.view.BookingPanel', {
     extend: 'Ext.panel.Panel',
@@ -28,6 +29,12 @@ Ext.define('Appointments.view.BookingPanel', {
                 allowBlank: false,
                 listeners: {change: me.onProviderChange, scope: me}
             }, {
+                xtype: 'component',
+                itemId: 'providerInfo',
+                margin: '0 0 8 145',
+                style: {color: '#666'},
+                html: ''
+            }, {
                 xtype: 'combo',
                 itemId: 'service',
                 fieldLabel: 'Service',
@@ -42,7 +49,7 @@ Ext.define('Appointments.view.BookingPanel', {
                 disabled: true
             }, {
                 xtype: 'fieldcontainer',
-                fieldLabel: 'From (UTC)',
+                fieldLabel: 'From',
                 layout: 'hbox',
                 items: [
                     {xtype: 'datefield', itemId: 'fromDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, width: 140},
@@ -50,7 +57,7 @@ Ext.define('Appointments.view.BookingPanel', {
                 ]
             }, {
                 xtype: 'fieldcontainer',
-                fieldLabel: 'To (UTC)',
+                fieldLabel: 'To',
                 layout: 'hbox',
                 items: [
                     {xtype: 'datefield', itemId: 'toDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, width: 140},
@@ -73,8 +80,8 @@ Ext.define('Appointments.view.BookingPanel', {
             store: me.suggestionStore,
             emptyText: 'No suggestions – choose provider, service and period, then search.',
             columns: [
-                {text: 'Start (UTC)', dataIndex: 'start', flex: 1, renderer: Appointments.Api.formatUtc},
-                {text: 'End (UTC)', dataIndex: 'end', flex: 1, renderer: Appointments.Api.formatUtc},
+                {text: 'Start', dataIndex: 'start', flex: 1, renderer: me.renderTime, scope: me},
+                {text: 'End', dataIndex: 'end', flex: 1, renderer: me.renderTime, scope: me},
                 {text: 'Service', dataIndex: 'repairServiceId', width: 120}
             ],
             listeners: {selectionchange: me.updateBookButton, scope: me}
@@ -103,8 +110,13 @@ Ext.define('Appointments.view.BookingPanel', {
         me.callParent();
     },
 
+    renderTime: function (iso) {
+        return Appointments.Api.formatInZone(iso, this.down('#provider').getTimeZone());
+    },
+
     onProviderChange: function (combo, providerId) {
         var me = this, serviceCombo = me.down('#service');
+        me.down('#providerInfo').setHtml(Ext.String.htmlEncode(combo.describeSelection()));
         serviceCombo.clearValue();
         me.serviceStore.removeAll();
         me.suggestionStore.removeAll();
@@ -126,8 +138,9 @@ Ext.define('Appointments.view.BookingPanel', {
         if (!me.down('#searchForm').isValid()) {
             return;
         }
-        var from = Api.toUtcIso(me.down('#fromDay').getValue(), me.down('#fromTime').getValue()),
-            to = Api.toUtcIso(me.down('#toDay').getValue(), me.down('#toTime').getValue());
+        var zone = me.down('#provider').getTimeZone(),
+            from = Api.toInstant(me.down('#fromDay').getValue(), me.down('#fromTime').getValue(), zone),
+            to = Api.toInstant(me.down('#toDay').getValue(), me.down('#toTime').getValue(), zone);
         me.setLoading('Searching…');
         Api.getSuggestions(me.down('#provider').getValue(), me.down('#service').getValue(), from, to)
             .then(function (suggestions) {
@@ -151,18 +164,19 @@ Ext.define('Appointments.view.BookingPanel', {
     book: function () {
         var me = this, Api = Appointments.Api,
             suggestion = me.down('#suggestions').getSelection()[0],
-            providerId = suggestion.get('serviceId');
+            providerId = suggestion.get('serviceId'),
+            zone = me.down('#provider').getTimeZone();
         Api.book(providerId, {
             customerNumber: Ext.String.trim(me.down('#customerNumber').getValue()),
             start: suggestion.get('start'),
             repairServiceId: suggestion.get('repairServiceId')
         }).then(function (appointment) {
             Ext.Msg.alert('Appointment booked', Ext.String.format(
-                'Booked {0} for customer {1}<br>{2} – {3} UTC<br>Appointment id: {4}',
+                'Booked {0} for customer {1}<br>{2} – {3} ({4})<br>Appointment id: {5}',
                 Ext.String.htmlEncode(appointment.repairServiceName),
                 Ext.String.htmlEncode(appointment.customerNumber),
-                Api.formatUtc(appointment.start), Api.formatUtc(appointment.end).substring(11),
-                appointment.id));
+                Api.formatInZone(appointment.start, zone), Api.formatInZone(appointment.end, zone).substring(11),
+                zone, appointment.id));
             me.fireEvent('appointmentbooked', providerId);
         }).catch(function (e) {
             // HTTP 409: someone else took the last capacity since the search – show fresh availability.

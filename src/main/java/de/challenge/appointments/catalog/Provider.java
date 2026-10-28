@@ -7,6 +7,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
@@ -37,7 +38,8 @@ public class Provider {
     @Column(name = "time_zone", nullable = false)
     private String timeZone;
 
-    @ElementCollection
+    /** At most seven rows and needed by every booking, suggestion and API response: always loaded with the provider. */
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "provider_opening_hours", joinColumns = @JoinColumn(name = "provider_id"))
     private List<OpeningPeriod> openingPeriods = new ArrayList<>();
 

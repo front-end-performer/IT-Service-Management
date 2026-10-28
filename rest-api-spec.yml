@@ -112,15 +112,34 @@ paths:
           description: Termine nach Kundennummer filtern
           required: false
           type: string
+        - name: page
+          in: query
+          description: Erweiterung – Seite (ab 0), sortiert nach Startzeit
+          required: false
+          type: integer
+          minimum: 0
+          default: 0
+        - name: size
+          in: query
+          description: Erweiterung – Termine pro Seite
+          required: false
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
       responses:
         '200':
-          description: Liste der Kundentermine
+          description: Liste der Kundentermine (eine Seite)
+          headers:
+            X-Total-Count:
+              type: integer
+              description: Erweiterung – Gesamtzahl der Termine, die dem Filter entsprechen
           schema:
             type: array
             items:
               $ref: '#/definitions/appointment'
         '400':
-          description: Ungültiger Zeitraum (from nach to oder kein ISO-8601-Datum)
+          description: Ungültiger Zeitraum (from nach to oder kein ISO-8601-Datum) oder ungültige page/size
           schema:
             $ref: '#/definitions/problem'
         '404':
@@ -333,6 +352,20 @@ definitions:
         minimum: 1
         description: Maximale Anzahl parallel laufender Termine
         example: 2
+      timeZone:
+        type: string
+        description: Erweiterung – Zeitzone der Öffnungszeiten
+        example: Europe/Berlin
+      openingHours:
+        type: object
+        description: >
+          Erweiterung – Öffnungszeiten je Wochentag in Ortszeit (MONDAY … SUNDAY → "08:00-18:00").
+          Fehlende Tage sind geschlossen; eine leere Map bedeutet durchgehend geöffnet.
+        additionalProperties:
+          type: string
+        example:
+          MONDAY: 08:00-18:00
+          SATURDAY: 09:00-13:00
 
   repairService:
     type: object

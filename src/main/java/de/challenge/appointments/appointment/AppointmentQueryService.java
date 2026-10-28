@@ -6,6 +6,8 @@ import de.challenge.appointments.common.NotFoundException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -29,8 +31,9 @@ public class AppointmentQueryService {
         this.appointments = appointments;
     }
 
+    /** One page of the provider's appointments matching the filter, ordered by start. */
     @Transactional(readOnly = true)
-    public List<Appointment> list(String providerId, Filter filter) {
+    public Page<Appointment> list(String providerId, Filter filter, int page, int size) {
         requireProvider(providerId);
         if (filter.from() != null && filter.to() != null && filter.from().isAfter(filter.to())) {
             throw new InvalidRequestException("'from' must not be after 'to'");
@@ -49,7 +52,7 @@ public class AppointmentQueryService {
         if (filter.customerNumber() != null) {
             specs.add((root, query, cb) -> cb.equal(root.get("customerNumber"), filter.customerNumber()));
         }
-        return appointments.findAll(Specification.allOf(specs), Sort.by("start", "id"));
+        return appointments.findAll(Specification.allOf(specs), PageRequest.of(page, size, Sort.by("start", "id")));
     }
 
     @Transactional(readOnly = true)

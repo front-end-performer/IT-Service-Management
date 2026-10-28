@@ -8,12 +8,16 @@ import de.challenge.appointments.catalog.ServiceOffering;
 import de.challenge.appointments.imports.ImportBatch;
 import de.challenge.appointments.imports.ImportRejection;
 import de.challenge.appointments.imports.RejectionReason;
+import de.challenge.appointments.scheduling.OpeningHours;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Request/response bodies of rest-api-spec.yml. Naming follows the spec: {@code serviceId} is the
@@ -24,9 +28,18 @@ final class Dtos {
     private Dtos() {
     }
 
-    record ItServiceDto(String id, String name, int capacity) {
+    /**
+     * {@code timeZone} and {@code openingHours} (weekday -> "08:00-18:00", local time) are additions to
+     * the spec so clients can show and enter times in the provider's local time. Missing days are closed;
+     * an empty map means open around the clock.
+     */
+    record ItServiceDto(String id, String name, int capacity, String timeZone, Map<String, String> openingHours) {
         static ItServiceDto of(Provider provider) {
-            return new ItServiceDto(provider.getId(), provider.getName(), provider.getCapacity());
+            OpeningHours hours = provider.getOpeningHours();
+            Map<String, String> periods = new LinkedHashMap<>();
+            new TreeMap<>(hours.periods()).forEach((day, period) -> periods.put(day.name(), period.toString()));
+            return new ItServiceDto(provider.getId(), provider.getName(), provider.getCapacity(),
+                    hours.zone().getId(), periods);
         }
     }
 

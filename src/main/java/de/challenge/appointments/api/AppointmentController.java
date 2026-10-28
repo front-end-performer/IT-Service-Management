@@ -7,6 +7,8 @@ import de.challenge.appointments.appointment.AppointmentQueryService;
 import de.challenge.appointments.appointment.BookingService;
 import de.challenge.appointments.appointment.SuggestionService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -26,6 +28,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/it-services/{serviceId}")
 class AppointmentController {
 
+    static final int DEFAULT_PAGE_SIZE = 100;
+    static final int MAX_PAGE_SIZE = 500;
+    static final String TOTAL_COUNT_HEADER = "X-Total-Count";
+
     private final AppointmentQueryService queries;
     private final BookingService booking;
     private final SuggestionService suggestions;
@@ -36,15 +42,25 @@ class AppointmentController {
         this.suggestions = suggestions;
     }
 
+    /**
+     * Paged (extension): the body stays the plain array of the spec, the total is in {@code X-Total-Count}.
+     * Without paging parameters the first {@value #DEFAULT_PAGE_SIZE} appointments are returned.
+     */
     @GetMapping("/appointments")
-    List<AppointmentDto> getAppointments(@PathVariable String serviceId,
-                                         @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) OffsetDateTime from,
-                                         @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) OffsetDateTime to,
-                                         @RequestParam(required = false) String repairServiceId,
-                                         @RequestParam(required = false) String customerNumber) {
+    ResponseEntity<List<AppointmentDto>> getAppointments(
+            @PathVariable String serviceId,
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) OffsetDateTime to,
+            @RequestParam(required = false) String repairServiceId,
+            @RequestParam(required = false) String customerNumber,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) @Min(1) @Max(MAX_PAGE_SIZE) int size) {
         var filter = new AppointmentQueryService.Filter(instant(from), instant(to), blankToNull(repairServiceId),
                 blankToNull(customerNumber));
-        return queries.list(serviceId, filter).stream().map(AppointmentDto::of).toList();
+        var result = queries.list(serviceId, filter, page, size);
+        return ResponseEntity.ok()
+                .header(TOTAL_COUNT_HEADER, String.valueOf(result.getTotalElements()))
+                .body(result.map(AppointmentDto::of).getContent());
     }
 
     @PostMapping("/appointments")

@@ -62,6 +62,37 @@ class AppointmentApiTest extends IntegrationTest {
     }
 
     @Test
+    void exposesTimeZoneAndOpeningHoursOfEachProvider() throws Exception {
+        mvc.perform(get(MUELLER))
+                .andExpect(jsonPath("$.timeZone").value("Europe/Berlin"))
+                .andExpect(jsonPath("$.openingHours.MONDAY").value("08:00-18:00"))
+                .andExpect(jsonPath("$.openingHours.SATURDAY").value("09:00-13:00"))
+                .andExpect(jsonPath("$.openingHours.SUNDAY").doesNotExist());
+        mvc.perform(get("/it-services"))
+                .andExpect(jsonPath("$[?(@.id=='CS-SCHNEIDER')].openingHours.FRIDAY").value("08:00-17:00"));
+    }
+
+    @Test
+    void pagesThroughAppointmentsWithTotalCount() throws Exception {
+        for (String start : new String[] {"08:00", "08:30", "09:00", "09:30", "10:00"}) {
+            book(MUELLER, "DIA", "P-" + start, "2026-11-02T" + start + ":00Z").andExpect(status().isCreated());
+        }
+
+        mvc.perform(get(MUELLER + "/appointments").param("page", "1").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Total-Count", "5"))
+                .andExpect(jsonPath("$[*].customerNumber").value(org.hamcrest.Matchers.contains("P-09:00", "P-09:30")));
+        mvc.perform(get(MUELLER + "/appointments").param("page", "2").param("size", "2"))
+                .andExpect(jsonPath("$[*].customerNumber").value(org.hamcrest.Matchers.contains("P-10:00")));
+        mvc.perform(get(MUELLER + "/appointments"))
+                .andExpect(header().string("X-Total-Count", "5"))
+                .andExpect(jsonPath("$", hasSize(5)));
+        mvc.perform(get(MUELLER + "/appointments").param("size", "0")).andExpect(status().isBadRequest());
+        mvc.perform(get(MUELLER + "/appointments").param("size", "501")).andExpect(status().isBadRequest());
+        mvc.perform(get(MUELLER + "/appointments").param("page", "-1")).andExpect(status().isBadRequest());
+    }
+
+    @Test
     void errorsAreProblemDetails() throws Exception {
         book(MUELLER, "DIA", "C-1", "2026-11-02T09:10:00Z")
                 .andExpect(status().isBadRequest())
