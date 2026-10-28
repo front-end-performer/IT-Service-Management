@@ -3,6 +3,7 @@ package de.challenge.appointments.imports;
 import de.challenge.appointments.appointment.Appointment;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringWriter;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
@@ -58,7 +59,10 @@ public final class CsvAppointmentParser {
     }
 
     private static List<Row> parseRows(Reader reader) throws IOException {
-        try (CSVParser parser = CSVParser.parse(new BomSkippingReader(reader), FORMAT)) {
+        // Uploads are capped at 5 MB, so reading the whole file is fine and keeps BOM handling trivial.
+        StringWriter content = new StringWriter();
+        reader.transferTo(content);
+        try (CSVParser parser = CSVParser.parse(withoutByteOrderMark(content.toString()), FORMAT)) {
             List<String> header = parser.getHeaderNames();
             if (!header.containsAll(HEADER)) {
                 throw new InvalidCsvException("Expected header %s but found %s"
@@ -70,6 +74,11 @@ public final class CsvAppointmentParser {
             }
             return rows;
         }
+    }
+
+    /** Excel and other Windows tools prepend a UTF-8 BOM that would otherwise end up in the first header name. */
+    private static String withoutByteOrderMark(String csv) {
+        return csv.startsWith("\uFEFF") ? csv.substring(1) : csv;
     }
 
     private static Row toRow(CSVRecord record, int columns) {
@@ -97,35 +106,6 @@ public final class CsvAppointmentParser {
         } catch (DateTimeParseException e) {
             return new InvalidRow(line, raw, RejectionReason.INVALID_DATE,
                     "'%s' is not an ISO-8601 date-time with offset".formatted(date));
-        }
-    }
-
-    /** Excel and other Windows tools prepend a UTF-8 BOM that would otherwise end up in the first header name. */
-    private static final class BomSkippingReader extends java.io.FilterReader {
-
-        private boolean first = true;
-
-        BomSkippingReader(Reader in) {
-            super(in);
-        }
-
-        @Override
-        public int read(char[] buffer, int offset, int length) throws IOException {
-            int n = super.read(buffer, offset, length);
-            if (first && n > 0) {
-                first = false;
-                if (buffer[offset] == '﻿') {
-                    System.arraycopy(buffer, offset + 1, buffer, offset, n - 1);
-                    return n == 1 ? read(buffer, offset, length) : n - 1;
-                }
-            }
-            return n;
-        }
-
-        @Override
-        public int read() throws IOException {
-            char[] one = new char[1];
-            return read(one, 0, 1) == -1 ? -1 : one[0];
         }
     }
 }

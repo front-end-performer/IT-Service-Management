@@ -77,9 +77,11 @@ public class ImportService {
                 throw new ImportFailedException(batchId, providerId, message, e);
             }
         }
-        transactions.executeWithoutResult(status -> batches.findById(batchId).orElseThrow().complete());
-
-        ImportBatch batch = transactions.execute(status -> batches.findByIdAndProviderId(batchId, providerId).orElseThrow());
+        ImportBatch batch = transactions.execute(status -> {
+            ImportBatch completed = batches.findByIdAndProviderId(batchId, providerId).orElseThrow();
+            completed.complete();
+            return completed;
+        });
         log.info("Import {} into {}: {} rows, {} imported, {} duplicates, {} rejected", batch.getId(),
                 providerId, batch.getTotalRows(), batch.getImported(), batch.getDuplicates(), batch.getRejected());
         return batch;

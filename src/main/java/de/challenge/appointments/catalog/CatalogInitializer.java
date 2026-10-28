@@ -1,5 +1,6 @@
 package de.challenge.appointments.catalog;
 
+import de.challenge.appointments.scheduling.OpeningHours;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -31,13 +32,14 @@ class CatalogInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         for (var config : properties.providers()) {
+            OpeningHours openingHours = config.toOpeningHours();
             Provider provider = providers.findById(config.id())
                     .map(existing -> {
-                        existing.update(config.name(), config.capacity(), config.toOpeningHours());
+                        existing.update(config.name(), config.capacity(), openingHours);
                         return existing;
                     })
                     .orElseGet(() -> providers.save(new Provider(config.id(), config.name(), config.capacity(),
-                            config.toOpeningHours())));
+                            openingHours)));
 
             for (var serviceConfig : config.services()) {
                 services.findByProviderIdAndCode(provider.getId(), serviceConfig.code())
@@ -47,7 +49,7 @@ class CatalogInitializer implements ApplicationRunner {
                                         serviceConfig.name(), serviceConfig.durationMinutes())));
             }
             log.info("Catalog: provider {} (capacity {}, {}) with {} services", provider.getId(),
-                    provider.getCapacity(), config.toOpeningHours(), config.services().size());
+                    provider.getCapacity(), openingHours, config.services().size());
         }
     }
 }
