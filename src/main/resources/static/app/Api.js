@@ -153,7 +153,17 @@ Ext.define('Appointments.Api', {
         }).join(', ');
     },
 
-    showError: function (title, error) {
-        Ext.Msg.alert(title, Ext.String.htmlEncode(error.message || String(error)));
+    /**
+     * Shows an API error. Server messages name times in UTC ("…at 2026-11-02T08:00:00Z"); with a
+     * zone given, those are rewritten into the provider's local time like everything else on screen.
+     */
+    showError: function (title, error, zone) {
+        var me = this, text = error.message || String(error);
+        if (zone) {
+            text = text.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z/g, function (iso) {
+                return me.formatInZone(iso, zone) + ' (' + zone + ')';
+            });
+        }
+        Ext.Msg.alert(title, Ext.String.htmlEncode(text));
     }
 });

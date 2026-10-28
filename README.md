@@ -36,6 +36,15 @@ java -jar target/appointments-1.0.0.jar
 
 Then open **http://127.0.0.1:8080/**.
 
+**Ready-made JAR:** GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)) builds and tests every
+push, using the same `./mvnw verify` with PostgreSQL via Testcontainers.
+- **Every run:** the executable JAR is attached as the build artifact `appointments-jar`.
+- **Version tags:** pushing a tag such as `v1.0.0` also publishes a GitHub release with the JAR attached.
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
 On startup, Flyway creates the schema and the provider/service catalog from `application.yml` is synced into the
 database.
 
@@ -188,7 +197,7 @@ Sat 09:00–13:00". In November, Berlin is UTC+1, so 09:00 on screen is 08:00Z i
 | 3 | Enter a period | From 2026-11-02 09:00, To 2026-11-02 14:00, service LAP | Fields accept the values |
 | 4 | Show suggestions | "Find available appointments" | 10:45, 11:00, … 12:00. Nothing before 10:45, because the imported LAP 10:00 and DIA 10:15 fill capacity 2. |
 | 5 | Book | Select 10:45, customer number `C-42`, "Book selected appointment" | Confirmation "10:45 – 12:45 (Europe/Berlin)". The list refreshes, and 10:45 is gone. |
-| 5b | Re-check on booking | Search DIA 09:00–18:00. Before clicking *Book* on 09:00, fill that slot from outside, e.g. twice `curl -H 'Content-Type: application/json' -d '{"customerNumber":"X","start":"2026-11-02T08:00:00Z","repairServiceId":"DIA"}' http://127.0.0.1:8080/it-services/IT-MUELLER/appointments` with two customer numbers (08:00Z = 09:00 Berlin). Then click *Book*. | "Booking failed: No capacity left for DIA at 2026-11-02T08:00:00Z" (409). The list refreshes without 09:00. |
+| 5b | Re-check on booking | Search DIA 09:00–18:00. Before clicking *Book* on 09:00, fill that slot from outside, e.g. twice `curl -H 'Content-Type: application/json' -d '{"customerNumber":"X","start":"2026-11-02T08:00:00Z","repairServiceId":"DIA"}' http://127.0.0.1:8080/it-services/IT-MUELLER/appointments` with two customer numbers (08:00Z = 09:00 Berlin). Then click *Book*. | "Booking failed: No capacity left for DIA at 2026-11-02 09:00 (Europe/Berlin)" (409). The server reports UTC; the UI shows it in the provider's time. The list refreshes without 09:00. |
 | 6 | Provider's appointments in a table | *Provider appointments* tab, Müller, From/To 2026-11-02, service LAP, "Search" | Two rows: 10:00 10003 (IMPORTED) and 10:45 C-42 (BOOKED). The bottom toolbar shows "1–2 of 2" and the time zone. |
 | 7 | Details of an appointment | Click a row | The details panel shows id, customer, start and end (with the zone), provider, service and source |
 

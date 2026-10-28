@@ -1,0 +1,58 @@
+# Builds and tests the application and provides the executable JAR.
+# - every push / pull request: all tests (PostgreSQL via Testcontainers), JAR as build artifact
+# - tag v* (e.g. v1.0.0): additionally a GitHub release with the JAR attached
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build and test
+        run: ./mvnw -B verify
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: target/surefire-reports/
+
+      - name: Upload executable JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: appointments-jar
+          path: target/appointments-*.jar
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: appointments-jar
+
+      - name: Publish release with the JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" appointments-*.jar --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes

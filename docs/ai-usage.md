@@ -128,6 +128,21 @@ with a human developer making the decisions and reviewing the results.
     - **Response-level spec check:** every response of every API test is checked against the YAML. It was
       verified by deleting three spec entries one at a time; each was caught.
 
+14. **Final check against the task.** Claude went through the task text section by section and re-verified the
+    project:
+    - the packaged JAR against PostgreSQL 17, with migrations V1–V3;
+    - both legacy files: 20 of 20 rows each, `COMPLETED`;
+    - 20 parallel bookings: 2 × 201 and 18 × 409;
+    - the full frontend check, without browser errors;
+    - the extended spec, validated as Swagger 2.0 next to the original.
+
+    Findings, all fixed at the developer's choice:
+    - **Service name:** "Betriebssystem-Installation" did not match the task's "Betriebssysteminstallation".
+    - **Missing deliverable:** the executable JAR was not delivered. A GitHub Actions workflow now builds, tests and
+      attaches it, and publishes a release on version tags; it was checked with actionlint.
+    - **UTC in the UI:** the UI showed UTC timestamps from server messages. They are now shown in the provider's
+      time.
+
 ## What the human did
 
 - Set the scope and constraints: Ext JS sourcing, opening hours (first none, later required), build tool and database.

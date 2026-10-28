@@ -148,7 +148,7 @@ Ext.define('Appointments.view.BookingPanel', {
             })
             .catch(function (e) {
                 me.suggestionStore.removeAll();
-                Api.showError('Search failed', e);
+                Api.showError('Search failed', e, zone);
             })
             .finally(function () {
                 me.setLoading(false);
@@ -180,7 +180,7 @@ Ext.define('Appointments.view.BookingPanel', {
             me.fireEvent('appointmentbooked', providerId);
         }).catch(function (e) {
             // HTTP 409: someone else took the last capacity since the search – show fresh availability.
-            Api.showError('Booking failed', e);
+            Api.showError('Booking failed', e, zone);
         }).finally(function () {
             me.findSuggestions();
         });
