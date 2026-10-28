@@ -48,6 +48,16 @@ git tag v1.0.0 && git push origin v1.0.0
 On startup, Flyway creates the schema and the provider/service catalog from `application.yml` is synced into the
 database.
 
+**Port 5432 already in use?** If PostgreSQL is installed locally, it usually holds port 5432.
+- **What you see:** `docker compose up -d` cannot start the container ("address already in use"), and the JAR connects
+  to the *local* PostgreSQL instead. It then fails with `FATAL: password authentication failed for user "icares"`.
+- **Fix:** move both to another port with the same `DB_PORT`:
+
+```bash
+DB_PORT=55432 docker compose up -d
+DB_PORT=55432 java -jar target/appointments-1.0.0.jar
+```
+
 **Without Docker:** use the embedded H2 file database. Data goes to `./data/`.
 
 ```bash
