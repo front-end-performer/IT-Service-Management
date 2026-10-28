@@ -1,0 +1,151 @@
+# IT Service Appointments
+
+This is a solution to the [IT service management coding challenge](docs/task/README.de.md). It has a Spring Boot backend
+and an Ext JS frontend. Customers can find and book 15-minute-grid appointments with IT service providers, and the app
+never lets a provider's concurrent capacity be exceeded, even when requests come in at the same time. Legacy appointments
+can be imported from CSV.
+
+| | |
+|---|---|
+| Backend | Java 21, Spring Boot 4.1, Spring Data JPA, Flyway, executable JAR |
+| Database | PostgreSQL (default, via `docker-compose.yml`) or H2 (profile `h2`, no setup) |
+| Frontend | Ext JS 6.2 (GPL, classic toolkit), served by the backend at `http://127.0.0.1:8080/` |
+| API | [`rest-api-spec.yml`](rest-api-spec.yml) (Swagger 2.0, original spec plus documented extensions) |
+| Decisions | [`docs/adr/`](docs/adr) |
+| AI usage | [`docs/ai-usage.md`](docs/ai-usage.md) |
+
+## Prerequisites
+
+- **JDK 21+** (a full JDK, since `javac` is needed to build). Maven isn't needed because the wrapper `./mvnw` is included.
+- **Docker**, for PostgreSQL and for the integration tests (Testcontainers).
+
+## Build and run
+
+```bash
+# 1. Start PostgreSQL (database/user/password: icares, port 5432)
+docker compose up -d
+
+# 2. Build the executable JAR (runs all tests; use -DskipTests to skip them)
+./mvnw clean package
+
+# 3. Start
+java -jar target/appointments-1.0.0.jar
+```
+
+Then open **http://127.0.0.1:8080/**.
+
+On startup, Flyway creates the schema and the provider/service catalog from `application.yml` is synced into the
+database.
+
+**Without Docker:** use the embedded H2 file database. Data goes to `./data/`.
+
+```bash
+./mvnw clean package -DskipTests
+java -jar target/appointments-1.0.0.jar --spring.profiles.active=h2
+```
+
+Other database settings can be passed as usual, e.g. `--spring.datasource.url=jdbc:postgresql://host:5432/db`.
+
+## Importing the legacy appointments
+
+The provider is **always chosen explicitly**, either in the URL or in the UI's *Import CSV* tab. It is never taken from
+the file name.
+
+> ⚠️ **The two files in `termine/` have swapped names.** `Computer-Service-Schneider.csv` contains DIA/LAP/OSI, which is
+> the IT-Service Müller catalog. `IT-Service-Mueller.csv` contains DIA/VIR/DAT, which is the Schneider catalog. Import
+> them by content:
+
+```bash
+curl -F file=@termine/Computer-Service-Schneider.csv http://127.0.0.1:8080/it-services/IT-MUELLER/appointment-imports
+curl -F file=@termine/IT-Service-Mueller.csv         http://127.0.0.1:8080/it-services/CS-SCHNEIDER/appointment-imports
+```
+
+Each import imports 20 of 20 rows. If you import a file into the provider named in its file name instead, the
+foreign service codes are rejected and listed in the report. For example, the Schneider-named file into `CS-SCHNEIDER`
+gives 11 rows imported (DIA) and 9 rejected (`UNKNOWN_SERVICE_CODE`: LAP, OSI), each with its line number. Importing
+the same file again adds nothing: every row is reported as a `DUPLICATE`.
+
+Rejection reasons: `MALFORMED_ROW`, `MISSING_FIELD`, `INVALID_DATE`, `OFF_GRID`, `UNKNOWN_SERVICE_CODE`,
+`CAPACITY_EXCEEDED`, `DUPLICATE`. Reports are stored and can be fetched again via
+`GET /it-services/{id}/appointment-imports[/{importId}]`.
+
+## API at a glance
+
+`serviceId` in the spec means the **provider**, and `repairServiceId` means the **service code**. The spec's naming is
+kept as-is.
+
+```bash
+H=http://127.0.0.1:8080
+curl $H/it-services                                    # providers: IT-MUELLER, CS-SCHNEIDER
+curl $H/it-services/IT-MUELLER/services                # DIA 30 min, LAP 120 min, OSI 60 min
+curl "$H/it-services/IT-MUELLER/appointment-suggestions?repairServiceId=LAP&from=2026-11-02T08:00:00Z&to=2026-11-02T13:00:00Z"
+curl -i -H 'Content-Type: application/json' \
+     -d '{"customerNumber":"10001","start":"2026-11-02T09:45:00Z","repairServiceId":"LAP"}' \
+     $H/it-services/IT-MUELLER/appointments           # 201 + Location; 409 when the slot is taken
+curl "$H/it-services/IT-MUELLER/appointments?from=2026-11-02T00:00:00Z&to=2026-11-02T23:59:59Z&repairServiceId=LAP"
+curl $H/it-services/IT-MUELLER/appointments/{appointmentId}
+```
+
+Errors are returned as RFC 9457 problem details: `400` for invalid input or an off-grid start, `404` for an unknown
+provider, service or appointment, and `409` when there is no capacity left or the booking is a duplicate.
+
+All times are UTC `Instant`s. Inputs may carry any offset (`2026-11-02T10:00+01:00`), and outputs are always
+`…Z`. The UI shows and accepts UTC as well.
+
+## Scheduling rules
+
+- An appointment starts on a 15-minute boundary (`:00/:15/:30/:45`), and `end = start + duration of the provider's service`.
+- Intervals are half-open, `[start, end)`. An appointment ending at 09:00 does not overlap one starting at 09:00.
+- A slot is free when the **peak** number of appointments running in parallel during its **whole** duration
+  stays below the capacity. Booked and imported appointments count the same way.
+- Suggestions are every grid start in `[from, to]` whose service finishes by `to` and that fits. The search range is
+  limited to 31 days. There are no opening hours, because the task doesn't define any.
+- Overbooking under concurrent requests is prevented with a row lock on the provider during the re-check and the
+  insert. See [ADR 0003](docs/adr/0003-pessimistic-provider-lock.md).
+
+## Adding a provider or service
+
+Edit `catalog.providers` in [`application.yml`](src/main/resources/application.yml), or override it with an external
+`application.yml` or environment variables, then restart. No code changes are needed.
+
+```yaml
+catalog:
+  providers:
+    - id: PC-HILFE-WEBER
+      name: PC-Hilfe Weber
+      capacity: 4
+      services:
+        - { code: DIA, name: PC-Diagnose, duration-minutes: 20 }
+```
+
+## Tests
+
+```bash
+./mvnw test     # 50 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
+```
+
+| Test | Covers |
+|---|---|
+| `CapacityCalculatorTest`, `SlotFinderTest`, `TimeGridTest` | Overlaps, touching intervals, a peak inside the duration, Müller (cap 2) and Schneider (cap 3) scenarios, grid rounding |
+| `AppointmentApiTest` | Booking (201/400/404/409), the end time per provider, duplicates, suggestions, filters, details |
+| `ConcurrentBookingTest` | 20 parallel bookings of one slot give exactly 2 created and 18 conflicts; 60 parallel overlapping bookings stay within capacity 3 |
+| `ImportApiTest`, `CsvAppointmentParserTest` | Real legacy files, wrong-provider import, re-import, every rejection reason with its line number, header errors |
+
+To check that the concurrency test actually works, I replaced the locking read with a plain `findById`. With that
+change, 10 of 20 parallel bookings succeeded at capacity 2, and the test failed.
+
+## Project layout
+
+```
+src/main/java/de/challenge/appointments/
+  scheduling/   pure domain: TimeSlot, TimeGrid, CapacityCalculator, SlotFinder (no Spring, no DB)
+  catalog/      providers and services, YAML config, startup sync
+  appointment/  Appointment entity, AppointmentScheduler (single write path), booking/suggestion/query services
+  imports/      CSV parser, import batches, rejection reasons
+  api/          REST controllers, DTOs, RFC 9457 error mapping
+src/main/resources/
+  db/migration/ Flyway schema
+  static/       Ext JS app (index.html, app/) and the vendored Ext JS 6.2.0 GPL runtime
+docs/adr/       architecture decision records
+docs/ai/        implementation plan produced with AI assistance
+```
