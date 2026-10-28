@@ -63,7 +63,7 @@ final class Dtos {
     }
 
     /** {@code start} accepts any offset and optional seconds (e.g. the legacy form 2026-11-02T08:00Z). */
-    record AppointmentRequest(@NotBlank @Size(max = 64) String customerNumber,
+    record AppointmentRequest(@NotBlank @Size(max = Appointment.MAX_CUSTOMER_NUMBER_LENGTH) String customerNumber,
                               @NotNull OffsetDateTime start,
                               @NotBlank String repairServiceId) {
     }

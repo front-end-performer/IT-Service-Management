@@ -196,6 +196,18 @@ class ImportApiTest extends IntegrationTest {
     }
 
     @Test
+    void rejectsATooLongCustomerNumberAsARowNotTheWholeFile() throws Exception {
+        String tooLong = "K".repeat(65);
+        byte[] csv = ("KdnNr,APP_DATE,SERVICE\n" + tooLong + ",2026-11-02T08:00Z,DIA\nOK-1,2026-11-02T09:00Z,DIA\n").getBytes();
+
+        upload("IT-MUELLER", "long.csv", csv)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.imported").value(1))
+                .andExpect(jsonPath("$.rejections[0].lineNumber").value(2))
+                .andExpect(jsonPath("$.rejections[0].reason").value("INVALID_CUSTOMER_NUMBER"));
+    }
+
+    @Test
     void rejectsFilesThatCannotBeProcessedAtAll() throws Exception {
         upload("IT-MUELLER", "wrong.csv", "customer,date,code\n1,2026-11-02T08:00Z,DIA\n".getBytes())
                 .andExpect(status().isBadRequest())

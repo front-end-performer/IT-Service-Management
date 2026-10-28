@@ -19,6 +19,9 @@ import java.util.UUID;
 @Table(name = "appointment")
 public class Appointment {
 
+    /** Length of the {@code customer_number} column; enforced for bookings and imports alike. */
+    public static final int MAX_CUSTOMER_NUMBER_LENGTH = 64;
+
     @Id
     private String id;
 

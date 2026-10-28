@@ -5,6 +5,8 @@ public enum RejectionReason {
     /** Wrong number of columns. */
     MALFORMED_ROW,
     MISSING_FIELD,
+    /** KdnNr is longer than {@link de.challenge.appointments.appointment.Appointment#MAX_CUSTOMER_NUMBER_LENGTH}. */
+    INVALID_CUSTOMER_NUMBER,
     /** APP_DATE is not an ISO-8601 date-time with offset, e.g. 2026-11-02T08:00Z. */
     INVALID_DATE,
     /** Start is not on the 15-minute grid. */

@@ -1,5 +1,6 @@
 package de.challenge.appointments.imports;
 
+import de.challenge.appointments.appointment.Appointment;
 import java.io.IOException;
 import java.io.Reader;
 import java.time.Instant;
@@ -85,6 +86,10 @@ public final class CsvAppointmentParser {
             if (record.get(column).isEmpty()) {
                 return new InvalidRow(line, raw, RejectionReason.MISSING_FIELD, column + " is empty");
             }
+        }
+        if (customer.length() > Appointment.MAX_CUSTOMER_NUMBER_LENGTH) {
+            return new InvalidRow(line, raw, RejectionReason.INVALID_CUSTOMER_NUMBER,
+                    "KdnNr is longer than %d characters".formatted(Appointment.MAX_CUSTOMER_NUMBER_LENGTH));
         }
         try {
             Instant start = OffsetDateTime.parse(date).toInstant();
