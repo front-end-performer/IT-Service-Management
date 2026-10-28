@@ -40,6 +40,12 @@ with a human developer making the decisions and reviewing the results.
 
    The integration tests also got a fixed clock, so they don't expire after 2026-11-02.
 
+6. **Test completeness.** At the developer's request, every task requirement and checklist pitfall was mapped to a
+   test ([`test-coverage.md`](test-coverage.md)). The missing ones were added: import racing bookings, identical
+   parallel requests, parallel re-imports, the checklist's A/B/C peak example, capacity 3, file-order conflicts, DIA
+   duration per provider, extensibility via config, the H2 profile and frontend serving. The import race tests were
+   confirmed to fail when the import does not take the provider lock.
+
 ## What the human did
 
 - Set the scope and constraints: Ext JS sourcing, no opening hours, build tool and database.

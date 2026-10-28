@@ -12,6 +12,7 @@ can be imported from CSV.
 | Frontend | Ext JS 6.2 (GPL, classic toolkit), served by the backend at `http://127.0.0.1:8080/` |
 | API | [`rest-api-spec.yml`](rest-api-spec.yml) (Swagger 2.0, original spec plus documented extensions) |
 | Decisions | [`docs/adr/`](docs/adr) |
+| Requirements → tests | [`docs/test-coverage.md`](docs/test-coverage.md) |
 | AI usage | [`docs/ai-usage.md`](docs/ai-usage.md) |
 
 ## Prerequisites
@@ -126,19 +127,26 @@ catalog:
 ## Tests
 
 ```bash
-./mvnw test     # 56 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
+./mvnw test     # 71 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
 ```
 
 | Test | Covers |
 |---|---|
 | `CapacityCalculatorTest`, `SlotFinderTest`, `TimeGridTest` | Overlaps, touching intervals, a peak inside the duration, Müller (cap 2) and Schneider (cap 3) scenarios, grid rounding |
 | `AppointmentApiTest` | Booking (201/400/404/409), the end time per provider, past starts, times without seconds, duplicates, suggestions, filters, details |
-| `ConcurrentBookingTest` | 20 parallel bookings of one slot give exactly 2 created and 18 conflicts; 60 parallel overlapping bookings stay within capacity 3 |
+| `ConcurrentBookingTest` | 20 parallel bookings of one slot give exactly 2 created; overlapping parallel bookings; an import racing bookings; identical parallel requests; parallel re-imports |
+| `CatalogExtensibilityTest` | A new provider and a changed duration via configuration only; existing appointments keep their end time |
+| `H2ProfileTest` | The whole flow, including the row lock, on the H2 profile |
+| `FrontendTest` | The Ext JS app and runtime are served from the JAR |
 | `SpecContractTest` | Implemented endpoints and DTO fields match `rest-api-spec.yml` exactly |
 | `ImportApiTest`, `CsvAppointmentParserTest` | Real legacy files, wrong-provider import, re-import, every rejection reason with its line number, header errors |
 
-To check that the concurrency test actually works, I replaced the locking read with a plain `findById`. With that
-change, 10 of 20 parallel bookings succeeded at capacity 2, and the test failed.
+To check that the concurrency tests actually work, I removed the lock and ran them again:
+- **Booking without the lock:** 10 of 20 parallel bookings succeeded at capacity 2, and the test failed.
+- **Import without the lock:** the import-vs-booking race test and the parallel re-import test failed.
+
+The mapping of every task requirement and known pitfall to its test is in
+[`docs/test-coverage.md`](docs/test-coverage.md).
 
 ## Project layout
 
