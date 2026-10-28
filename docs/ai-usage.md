@@ -143,6 +143,24 @@ with a human developer making the decisions and reviewing the results.
     - **UTC in the UI:** the UI showed UTC timestamps from server messages. They are now shown in the provider's
       time.
 
+15. **YAGNI / KISS / DRY review.** Claude read the whole application and checked it against the three
+    principles, confirming each suspicion with a search (e.g. zero usages) rather than by eye. The developer
+    applied three groups:
+    - **YAGNI:** removed 4 unused test starters, the undocumented H2 console, an unused scaffold class and 2 dead
+      getters.
+    - **KISS:** a hand-written BOM-skipping `FilterReader` became string handling of the upload-capped file. The
+      import now finishes in one transaction. Opening hours are built once per provider.
+    - **DRY:** four copies of the "start N requests at once" test code became one helper (`Simultaneously`), and
+      the import report URL is built in one place.
+
+    Deliberately kept as earned complexity: the single write path, `CatalogService`, chunked import with status,
+    and the two error-message mappings (two consumers, below the rule of three).
+
+    A slip during this step, corrected: one commit was made although the compile had failed (a brace lost while
+    removing the getters). It was found immediately, fixed and amended before any push. From then on, commits only
+    followed a green build. The race tests were checked again after the helper refactoring: all five fail without
+    the lock.
+
 ## What the human did
 
 - Set the scope and constraints: Ext JS sourcing, opening hours (first none, later required), build tool and database.
