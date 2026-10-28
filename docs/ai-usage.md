@@ -62,6 +62,16 @@ with a human developer making the decisions and reviewing the results.
 
    Each lock test was confirmed to fail when the lock is removed, on both databases.
 
+9. **Acceptance suite.** The developer supplied a 52-scenario test plan derived from the task text (capacity, grid,
+   end time, suggestions, booking, concurrency, import, management, providers, extensibility). It was later extended
+   by three overlap shapes (C11 inside, C12 enclosing, C13 touching before), giving 55 scenarios. Claude implemented
+   it 1:1 as a separate suite with the scenario ids in the method names. The suite was then validated by planting four
+   typical bugs in the production code, and each was caught (see [`test-coverage.md`](test-coverage.md)). The bug
+   "new start or end inside an existing appointment" is caught by C12 only.
+   - One scenario (S4) assumes that `to` limits the *start* of a suggestion. This project decided that `to` limits the
+     *end*, so S4 runs with a wider range and says so in a comment.
+   - X1 adds the third provider through an ordinary configuration file, not through test code.
+
 ## What the human did
 
 - Set the scope and constraints: Ext JS sourcing, no opening hours, build tool and database.

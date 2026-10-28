@@ -138,8 +138,12 @@ catalog:
 ## Tests
 
 ```bash
-./mvnw test     # 88 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
+./mvnw test     # 143 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
 ```
+
+The **acceptance suite** (`acceptance/`, 55 tests) follows the task text scenario by scenario (C1–C13, G, E, S, B, K,
+I, L, P, X1). The mapping and traceability matrix are in [`docs/test-coverage.md`](docs/test-coverage.md). The
+remaining tests cover the design's edge cases:
 
 | Test | Covers |
 |---|---|
@@ -160,6 +164,26 @@ To check that the concurrency tests actually work, I removed the lock and ran th
 
 The mapping of every task requirement and known pitfall to its test is in
 [`docs/test-coverage.md`](docs/test-coverage.md).
+
+## Manual frontend check
+
+The task requires a working frontend, not automated frontend tests. Run this check after `java -jar …` and
+importing the two legacy files as shown above, at http://127.0.0.1:8080/. All times in the UI are UTC.
+
+| # | Function (task) | Steps | Expected |
+|---|---|---|---|
+| 1 | Select a provider | *Book appointment* tab, open "IT service provider" | Müller (capacity 2) and Schneider (capacity 3) |
+| 2 | Select a service | Choose Müller, open "Service" | DIA 30 min, LAP 120 min, OSI 60 min |
+| 3 | Enter a period | From 2026-11-02 08:00, To 2026-11-02 13:00, service LAP | Fields accept the values |
+| 4 | Show suggestions | "Find available appointments" | 09:45, 10:00, … 11:00. Nothing before 09:45, because the imported LAP 09:00 and DIA 09:15 fill capacity 2. |
+| 5 | Book | Select 09:45, customer number `C-42`, "Book selected appointment" | Confirmation with end 11:45; the list refreshes; booking the same slot again shows "No capacity left" (409) |
+| 6 | Provider's appointments in a table | *Provider appointments* tab, Müller, From/To 2026-11-02, service LAP, "Search" | Two rows: 10003 (IMPORTED) and C-42 (BOOKED) |
+| 7 | Details of an appointment | Click a row | The details panel shows id, customer, start, end, provider, service and source |
+
+Also check the *Import CSV* tab: importing `termine/IT-Service-Mueller.csv` into Müller lists rejected rows with line
+number and reason (`UNKNOWN_SERVICE_CODE` for VIR/DAT).
+
+This flow was last run via headless Chrome (see [`docs/ai-usage.md`](docs/ai-usage.md)).
 
 ## Project layout
 
