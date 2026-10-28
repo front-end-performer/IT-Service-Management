@@ -102,6 +102,21 @@ with a human developer making the decisions and reviewing the results.
     - The Ext JS version was explained (license implication) but deliberately left unchanged, at the developer's
       request.
 
+12. **Deviations register.** Prompted by the task's "Flexibility" section, Claude built
+    [`deviations.md`](deviations.md).
+    - **API additions:** the original and current `rest-api-spec.yml` were parsed and compared mechanically. The
+      comparison found additions only.
+    - **Behavioural and task-level deviations:** listed by hand.
+    - **Each entry** has the original, the change, the reason, the ADR and a test. A script verified that every
+      referenced test exists and that every YAML addition is marked "Erweiterung".
+
+    Building the register surfaced three real issues, all fixed:
+    - **A wrong claim:** "existing clients keep working" about default paging. At the developer's choice, paging
+      became opt-in.
+    - **A real bug:** a CSV customer number over 64 characters made the whole import fail with 409. It is now a
+      rejected row (`INVALID_CUSTOMER_NUMBER`), test first.
+    - **Undocumented behaviour:** `Location`, `413` and the length limit were missing from the YAML.
+
 ## What the human did
 
 - Set the scope and constraints: Ext JS sourcing, opening hours (first none, later required), build tool and database.

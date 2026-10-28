@@ -8,6 +8,8 @@ info:
     REST API for managing IT service providers, IT services,
     appointment suggestions, and customer appointments.
     Customer numbers from the legacy system are supported.
+    Ergänzungen gegenüber der ursprünglichen Spezifikation sind mit "Erweiterung" markiert;
+    Begründungen siehe docs/deviations.md und docs/adr/0006-api-deviations.md.
 
 host: 127.0.0.1
 basePath: /
@@ -114,22 +116,23 @@ paths:
           type: string
         - name: page
           in: query
-          description: Erweiterung – Seite (ab 0), sortiert nach Startzeit
+          description: >
+            Erweiterung – Seite (ab 0), sortiert nach Startzeit. Paging ist optional:
+            ohne page und size werden alle Termine geliefert (wie spezifiziert).
+            Mit nur page gilt size = 100.
           required: false
           type: integer
           minimum: 0
-          default: 0
         - name: size
           in: query
-          description: Erweiterung – Termine pro Seite
+          description: Erweiterung – Termine pro Seite (mit nur size gilt page = 0)
           required: false
           type: integer
           minimum: 1
           maximum: 500
-          default: 100
       responses:
         '200':
-          description: Liste der Kundentermine (eine Seite)
+          description: Liste der Kundentermine (alle, oder eine Seite bei page/size)
           headers:
             X-Total-Count:
               type: integer
@@ -139,7 +142,7 @@ paths:
             items:
               $ref: '#/definitions/appointment'
         '400':
-          description: Ungültiger Zeitraum (from nach to oder kein ISO-8601-Datum) oder ungültige page/size
+          description: Erweiterung – ungültiger Zeitraum (from nach to oder kein ISO-8601-Datum) oder ungültige page/size
           schema:
             $ref: '#/definitions/problem'
         '404':
@@ -166,6 +169,10 @@ paths:
       responses:
         '201':
           description: Termin erfolgreich gebucht
+          headers:
+            Location:
+              type: string
+              description: Erweiterung – URL des gebuchten Termins
           schema:
             $ref: '#/definitions/appointment'
         '400':
@@ -282,8 +289,12 @@ paths:
             $ref: '#/definitions/problem'
         '404':
           description: IT-Service-Anbieter nicht gefunden
+        '413':
+          description: Erweiterung – Datei größer als 5 MB
+          schema:
+            $ref: '#/definitions/problem'
         '503':
-          description: Sperre des Anbieters nicht rechtzeitig erhalten; nach Retry-After erneut versuchen
+          description: Erweiterung – Sperre des Anbieters nicht rechtzeitig erhalten; nach Retry-After erneut versuchen
           schema:
             $ref: '#/definitions/problem'
     get:
@@ -454,7 +465,9 @@ definitions:
     properties:
       customerNumber:
         type: string
-        description: Kundennummer des Kunden
+        minLength: 1
+        maxLength: 64
+        description: Kundennummer des Kunden (Erweiterung – maximal 64 Zeichen)
         example: '10001'
       start:
         type: string
@@ -495,6 +508,7 @@ definitions:
 
   importReport:
     type: object
+    description: Erweiterung – Ergebnis eines CSV-Imports
     required: [id, serviceId, importedAt, totalRows, imported, duplicates, rejected]
     properties:
       id:
@@ -529,6 +543,7 @@ definitions:
 
   importRejection:
     type: object
+    description: Erweiterung – nicht importierte CSV-Zeile mit Grund
     required: [lineNumber, reason, message]
     properties:
       lineNumber:
@@ -540,7 +555,7 @@ definitions:
         example: 10003,2026-11-02T09:00Z,LAP
       reason:
         type: string
-        enum: [MALFORMED_ROW, MISSING_FIELD, INVALID_DATE, OFF_GRID, OUTSIDE_OPENING_HOURS, UNKNOWN_SERVICE_CODE, CAPACITY_EXCEEDED, DUPLICATE]
+        enum: [MALFORMED_ROW, MISSING_FIELD, INVALID_CUSTOMER_NUMBER, INVALID_DATE, OFF_GRID, OUTSIDE_OPENING_HOURS, UNKNOWN_SERVICE_CODE, CAPACITY_EXCEEDED, DUPLICATE]
       message:
         type: string
         example: Service code 'LAP' is not offered by CS-SCHNEIDER (offered DAT, DIA, VIR)

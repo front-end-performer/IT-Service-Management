@@ -25,7 +25,7 @@ row wins when rows conflict. Both are therefore our decisions (below).
   same provider lock (see 0003). Imported appointments therefore count toward availability immediately.
 - **Partial import:** valid rows are imported and invalid rows are recorded. One bad line does not block hundreds of
   good ones, and the report says exactly what to fix.
-- **Rejection reasons:** `MALFORMED_ROW`, `MISSING_FIELD`, `INVALID_DATE`, `OFF_GRID`, `OUTSIDE_OPENING_HOURS`, `UNKNOWN_SERVICE_CODE` (the
+- **Rejection reasons:** `MALFORMED_ROW`, `MISSING_FIELD`, `INVALID_CUSTOMER_NUMBER` (longer than 64 characters), `INVALID_DATE`, `OFF_GRID`, `OUTSIDE_OPENING_HOURS`, `UNKNOWN_SERVICE_CODE` (the
   message lists the codes the provider does offer), and `CAPACITY_EXCEEDED`. The legacy data could contain
   overbookings, and we do not take them over silently. Rows are processed in file order.
 - **Idempotency:** a row with the same provider, service, customer and start is reported as a `DUPLICATE` and

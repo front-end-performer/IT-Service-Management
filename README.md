@@ -12,6 +12,7 @@ can be imported from CSV.
 | Frontend | Ext JS 6.2 (GPL, classic toolkit), served by the backend at `http://127.0.0.1:8080/` |
 | API | [`rest-api-spec.yml`](rest-api-spec.yml) (Swagger 2.0, original spec plus documented extensions) |
 | Decisions | [`docs/adr/`](docs/adr) |
+| Deviations from task and spec | [`docs/deviations.md`](docs/deviations.md): every deviation with reason, ADR and test |
 | Requirements → tests | [`docs/test-coverage.md`](docs/test-coverage.md) |
 | AI usage | [`docs/ai-usage.md`](docs/ai-usage.md) |
 
@@ -66,7 +67,7 @@ foreign service codes are rejected and listed in the report. For example, the Sc
 gives 11 rows imported (DIA) and 9 rejected (`UNKNOWN_SERVICE_CODE`: LAP, OSI), each with its line number. Importing
 the same file again adds nothing: every row is reported as a `DUPLICATE`.
 
-Rejection reasons: `MALFORMED_ROW`, `MISSING_FIELD`, `INVALID_DATE`, `OFF_GRID`, `OUTSIDE_OPENING_HOURS`,
+Rejection reasons: `MALFORMED_ROW`, `MISSING_FIELD`, `INVALID_CUSTOMER_NUMBER`, `INVALID_DATE`, `OFF_GRID`, `OUTSIDE_OPENING_HOURS`,
 `UNKNOWN_SERVICE_CODE`,
 `CAPACITY_EXCEEDED`, `DUPLICATE`. Reports are stored and can be fetched again via
 `GET /it-services/{id}/appointment-imports[/{importId}]`.
@@ -88,8 +89,8 @@ curl "$H/it-services/IT-MUELLER/appointments?from=2026-11-02T00:00:00Z&to=2026-1
 curl $H/it-services/IT-MUELLER/appointments/{appointmentId}
 ```
 
-The appointment list is paged with the optional `page` (from 0) and `size` (default 100, at most 500) parameters. The
-body stays the array from the spec, and `X-Total-Count` carries the total.
+Paging of the appointment list is opt-in. Without `page`/`size` you get all appointments, as specified. With `page`
+(from 0) and/or `size` (1–500, default 100) you get one page. `X-Total-Count` always carries the total.
 
 Errors are returned as RFC 9457 problem details: `400` for invalid input or an off-grid start, `404` for an unknown
 provider, service or appointment, and `409` when there is no capacity left or the booking is a duplicate.
@@ -142,7 +143,7 @@ catalog:
 ## Tests
 
 ```bash
-./mvnw test     # 147 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
+./mvnw test     # 148 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
 ```
 
 The **acceptance suite** (`acceptance/`, 55 tests) follows the task text scenario by scenario (C1–C13, G, E, S, B, K,

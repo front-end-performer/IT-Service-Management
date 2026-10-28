@@ -3,7 +3,10 @@
 **Status:** accepted
 
 The spec is implemented as written: all paths, parameters, status codes and field names. Everything listed below is an
-addition, and it is reflected in [`rest-api-spec.yml`](../../rest-api-spec.yml).
+addition, and it is reflected in [`rest-api-spec.yml`](../../rest-api-spec.yml) and marked "Erweiterung" there.
+
+The complete register of deviations, including task-level deviations, interpretations and the test for each, is in
+[`docs/deviations.md`](../deviations.md). This ADR holds the API rationale.
 
 | Change | Reason |
 |---|---|
@@ -17,7 +20,9 @@ addition, and it is reflected in [`rest-api-spec.yml`](../../rest-api-spec.yml).
 | `409` also for a duplicate booking (same customer, service and start) | The spec describes 409 as "Termin nicht verfügbar". A duplicate is a variant of that. |
 | `503` + `Retry-After` on booking/import when the provider lock is not obtained within `appointments.lock-timeout-ms` | Not specified. A timeout is no statement about availability, so not 409. It is retryable, unlike a 500. See ADR 0003. |
 | `Location` header on `201` | Standard REST practice. The body is unchanged. |
-| Optional `page`/`size` on `GET …/appointments` (default 100, at most 500), total in `X-Total-Count` | The list grows with every booking and import, and an unbounded response does not scale. The body stays the plain array of the spec, so existing clients keep working. |
+| **Opt-in** `page`/`size` on `GET …/appointments` (size 1–500; only `page` given means size 100), total in `X-Total-Count` | The list grows with every booking and import, so the UI must be able to page. Without `page`/`size` **all** appointments are returned, exactly as specified, so a client that knows only the original spec never silently receives a truncated list. (A first version paged by default; that was changed for this reason.) |
+| `customerNumber` limited to 1–64 characters (bookings: 400; CSV rows: `INVALID_CUSTOMER_NUMBER`) | Matches the storage column. Before the CSV check, one overly long value made a whole import fail with 409. |
+| `413` problem detail for a CSV upload over 5 MB | Bounded request size. Verified against the packaged JAR. |
 | `itService.timeZone` and `itService.openingHours` | Clients need the provider's zone to show and accept local times, and the opening hours to explain why slots are missing. These are additive fields. |
 
 **Naming:** the spec calls the provider `serviceId` and the provider's service `repairServiceId`. This is kept for
