@@ -62,7 +62,8 @@ public class SuggestionService {
         }
         List<TimeSlot> booked = appointments.findOverlapping(providerId, earliest, to).stream()
                 .map(Appointment::slot).toList();
-        return SlotFinder.findFreeSlots(earliest, to, service.getDuration(), booked, provider.getCapacity()).stream()
+        return SlotFinder.findFreeSlots(earliest, to, service.getDuration(), booked, provider.getCapacity(),
+                        provider.getOpeningHours()).stream()
                 .map(slot -> new Suggestion(slot, provider, service))
                 .toList();
     }

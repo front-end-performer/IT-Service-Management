@@ -179,6 +179,23 @@ class ImportApiTest extends IntegrationTest {
     }
 
     @Test
+    void rejectsImportedAppointmentsOutsideOpeningHours() throws Exception {
+        byte[] csv = """
+                KdnNr,APP_DATE,SERVICE
+                N-1,2026-11-02T03:00Z,DIA
+                N-2,2026-11-08T09:00Z,DIA
+                N-3,2026-11-02T16:00Z,LAP
+                N-4,2026-11-02T16:00Z,DIA
+                """.getBytes();
+
+        upload("IT-MUELLER", "night.csv", csv)
+                .andExpect(jsonPath("$.imported").value(1))
+                .andExpect(jsonPath("$.rejections[*].reason").value(contains(
+                        "OUTSIDE_OPENING_HOURS", "OUTSIDE_OPENING_HOURS", "OUTSIDE_OPENING_HOURS")))
+                .andExpect(jsonPath("$.rejections[*].lineNumber").value(contains(2, 3, 4)));
+    }
+
+    @Test
     void rejectsFilesThatCannotBeProcessedAtAll() throws Exception {
         upload("IT-MUELLER", "wrong.csv", "customer,date,code\n1,2026-11-02T08:00Z,DIA\n".getBytes())
                 .andExpect(status().isBadRequest())

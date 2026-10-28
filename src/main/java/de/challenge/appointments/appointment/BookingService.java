@@ -50,6 +50,9 @@ public class BookingService {
             case SCHEDULED -> result.appointment();
             case OFF_GRID -> throw new InvalidRequestException(
                     "Start %s is not on the 15-minute grid".formatted(start));
+            case OUTSIDE_OPENING_HOURS -> throw new InvalidRequestException(
+                    "%s at %s is outside the opening hours of %s (%s)".formatted(serviceCode, start, providerId,
+                            provider.getOpeningHours()));
             case DUPLICATE -> throw new ConflictException(
                     "Customer %s already has %s at %s".formatted(customerNumber, serviceCode, start));
             case CAPACITY_EXCEEDED -> throw new ConflictException(

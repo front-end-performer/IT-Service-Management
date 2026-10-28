@@ -56,10 +56,12 @@ class CatalogExtensibilityTest extends IntegrationTest {
         List<ProviderConfig> changed = new ArrayList<>();
         for (ProviderConfig provider : configured.providers()) {
             changed.add(!provider.id().equals("IT-MUELLER") ? provider : new ProviderConfig(provider.id(),
-                    provider.name(), provider.capacity(), provider.services().stream()
+                    provider.name(), provider.capacity(), provider.timeZone(), provider.openingHours(),
+                    provider.services().stream()
                     .map(s -> s.code().equals("DIA") ? new ServiceConfig("DIA", s.name(), 45) : s).toList()));
         }
-        changed.add(new ProviderConfig(NEW_PROVIDER, "PC-Hilfe Test", 1,
+        // No opening hours configured: open around the clock.
+        changed.add(new ProviderConfig(NEW_PROVIDER, "PC-Hilfe Test", 1, null, null,
                 List.of(new ServiceConfig("DIA", "PC-Diagnose", 20))));
         applyCatalog(new CatalogProperties(changed));
 

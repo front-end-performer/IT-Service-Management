@@ -494,7 +494,7 @@ definitions:
         example: 10003,2026-11-02T09:00Z,LAP
       reason:
         type: string
-        enum: [MALFORMED_ROW, MISSING_FIELD, INVALID_DATE, OFF_GRID, UNKNOWN_SERVICE_CODE, CAPACITY_EXCEEDED, DUPLICATE]
+        enum: [MALFORMED_ROW, MISSING_FIELD, INVALID_DATE, OFF_GRID, OUTSIDE_OPENING_HOURS, UNKNOWN_SERVICE_CODE, CAPACITY_EXCEEDED, DUPLICATE]
       message:
         type: string
         example: Service code 'LAP' is not offered by CS-SCHNEIDER (offered DAT, DIA, VIR)

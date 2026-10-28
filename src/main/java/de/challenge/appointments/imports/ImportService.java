@@ -84,6 +84,9 @@ public class ImportService {
             case SCHEDULED -> batch.recordImported();
             case OFF_GRID -> batch.recordNotImported(row.lineNumber(), row.rawLine(), RejectionReason.OFF_GRID,
                     "Start %s is not on the 15-minute grid".formatted(row.start()));
+            case OUTSIDE_OPENING_HOURS -> batch.recordNotImported(row.lineNumber(), row.rawLine(),
+                    RejectionReason.OUTSIDE_OPENING_HOURS, "Outside the opening hours (%s)"
+                            .formatted(service.getProvider().getOpeningHours()));
             case DUPLICATE -> batch.recordNotImported(row.lineNumber(), row.rawLine(), RejectionReason.DUPLICATE,
                     "Appointment already exists");
             case CAPACITY_EXCEEDED -> batch.recordNotImported(row.lineNumber(), row.rawLine(),

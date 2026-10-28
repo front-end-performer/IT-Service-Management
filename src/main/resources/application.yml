@@ -20,13 +20,22 @@ server:
   address: 127.0.0.1
   port: 8080
 
-# Provider and service catalog. Synchronised into the database on startup;
+# Provider and service catalog including opening hours. Synchronised into the database on startup;
 # a new provider or service is added here without touching Java code.
 catalog:
   providers:
     - id: IT-MUELLER
       name: IT-Service Müller
       capacity: 2
+      # Local wall-clock times; an appointment must end by closing time. Missing days are closed.
+      time-zone: Europe/Berlin
+      opening-hours:
+        MONDAY: 08:00-18:00
+        TUESDAY: 08:00-18:00
+        WEDNESDAY: 08:00-18:00
+        THURSDAY: 08:00-18:00
+        FRIDAY: 08:00-18:00
+        SATURDAY: 09:00-13:00
       services:
         - code: DIA
           name: PC-Diagnose
@@ -40,6 +49,14 @@ catalog:
     - id: CS-SCHNEIDER
       name: Computer-Service Schneider
       capacity: 3
+      time-zone: Europe/Berlin
+      opening-hours:
+        MONDAY: 08:00-17:00
+        TUESDAY: 08:00-17:00
+        WEDNESDAY: 08:00-17:00
+        THURSDAY: 08:00-17:00
+        FRIDAY: 08:00-17:00
+        SATURDAY: 10:00-14:00
       services:
         - code: DIA
           name: PC-Diagnose

@@ -241,6 +241,48 @@ class AppointmentApiTest extends IntegrationTest {
     }
 
     @Test
+    void suggestionsFollowEachProvidersOpeningHours() throws Exception {
+        // Monday 2026-11-02, CET: Müller 08:00-18:00 local = 07:00-17:00Z, Schneider 08:00-17:00 = 07:00-16:00Z.
+        mvc.perform(get(MUELLER + "/appointment-suggestions").param("repairServiceId", "LAP")
+                        .param("from", "2026-11-02T00:00:00Z").param("to", "2026-11-03T00:00:00Z"))
+                .andExpect(jsonPath("$[0].start").value("2026-11-02T07:00:00Z"))
+                .andExpect(jsonPath("$[-1:].end").value(org.hamcrest.Matchers.contains("2026-11-02T17:00:00Z")));
+        mvc.perform(get(SCHNEIDER + "/appointment-suggestions").param("repairServiceId", "DAT")
+                        .param("from", "2026-11-02T00:00:00Z").param("to", "2026-11-03T00:00:00Z"))
+                .andExpect(jsonPath("$[0].start").value("2026-11-02T07:00:00Z"))
+                .andExpect(jsonPath("$[-1:].end").value(org.hamcrest.Matchers.contains("2026-11-02T16:00:00Z")));
+        // Sunday: closed.
+        mvc.perform(get(MUELLER + "/appointment-suggestions").param("repairServiceId", "DIA")
+                        .param("from", "2026-11-08T00:00:00Z").param("to", "2026-11-09T00:00:00Z"))
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void suggestionsFollowTheDaylightSavingSwitch() throws Exception {
+        // Friday 2027-03-26 (CET) opens at 07:00Z, Monday 2027-03-29 (CEST) at 06:00Z – both 08:00 in Berlin.
+        mvc.perform(get(MUELLER + "/appointment-suggestions").param("repairServiceId", "DIA")
+                        .param("from", "2027-03-26T00:00:00Z").param("to", "2027-03-27T00:00:00Z"))
+                .andExpect(jsonPath("$[0].start").value("2027-03-26T07:00:00Z"));
+        mvc.perform(get(MUELLER + "/appointment-suggestions").param("repairServiceId", "DIA")
+                        .param("from", "2027-03-29T00:00:00Z").param("to", "2027-03-30T00:00:00Z"))
+                .andExpect(jsonPath("$[0].start").value("2027-03-29T06:00:00Z"))
+                .andExpect(jsonPath("$[-1:].end").value(org.hamcrest.Matchers.contains("2027-03-29T16:00:00Z")));
+    }
+
+    @Test
+    void rejectsBookingsOutsideOpeningHoursOrPastClosing() throws Exception {
+        book(MUELLER, "DIA", "C-1", "2026-11-02T06:45:00Z") // 07:45 local
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("outside the opening hours")));
+        book(MUELLER, "LAP", "C-1", "2026-11-02T16:00:00Z") // 17:00-19:00 local, past closing
+                .andExpect(status().isBadRequest());
+        book(MUELLER, "DIA", "C-1", "2026-11-08T09:00:00Z") // Sunday
+                .andExpect(status().isBadRequest());
+        book(MUELLER, "LAP", "C-1", "2026-11-02T15:00:00Z") // 16:00-18:00 local, ends at closing
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void suggestionsValidateTheSearchRange() throws Exception {
         var request = get(MUELLER + "/appointment-suggestions").param("repairServiceId", "DIA");
         mvc.perform(request.param("from", "2026-11-02T12:00:00Z").param("to", "2026-11-02T08:00:00Z"))

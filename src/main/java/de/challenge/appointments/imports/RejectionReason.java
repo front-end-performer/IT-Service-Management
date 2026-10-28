@@ -9,6 +9,8 @@ public enum RejectionReason {
     INVALID_DATE,
     /** Start is not on the 15-minute grid. */
     OFF_GRID,
+    /** The appointment would not lie completely within the provider's opening hours. */
+    OUTSIDE_OPENING_HOURS,
     /** SERVICE is not offered by the provider the file is imported for. */
     UNKNOWN_SERVICE_CODE,
     /** The appointment would exceed the provider's capacity. */

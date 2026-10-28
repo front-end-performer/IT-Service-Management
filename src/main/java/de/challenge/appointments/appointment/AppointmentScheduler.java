@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class AppointmentScheduler {
 
-    public enum Outcome { SCHEDULED, OFF_GRID, DUPLICATE, CAPACITY_EXCEEDED }
+    public enum Outcome { SCHEDULED, OFF_GRID, OUTSIDE_OPENING_HOURS, DUPLICATE, CAPACITY_EXCEEDED }
 
     public record Result(Outcome outcome, Appointment appointment) {
     }
@@ -40,12 +40,15 @@ public class AppointmentScheduler {
         if (!TimeGrid.isAligned(start)) {
             return new Result(Outcome.OFF_GRID, null);
         }
+        TimeSlot candidate = TimeSlot.of(start, service.getDuration());
+        if (!service.getProvider().getOpeningHours().contains(candidate)) {
+            return new Result(Outcome.OUTSIDE_OPENING_HOURS, null);
+        }
         String providerId = service.getProvider().getId();
         if (appointments.existsByProviderIdAndServiceOfferingIdAndCustomerNumberAndStart(
                 providerId, service.getId(), customerNumber, start)) {
             return new Result(Outcome.DUPLICATE, null);
         }
-        TimeSlot candidate = TimeSlot.of(start, service.getDuration());
         List<TimeSlot> booked = appointments.findOverlapping(providerId, candidate.start(), candidate.end())
                 .stream().map(Appointment::slot).toList();
         if (!CapacityCalculator.fits(booked, candidate, service.getProvider().getCapacity())) {

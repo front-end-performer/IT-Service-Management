@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Brings the database catalog in line with {@link CatalogProperties} on every start:
- * new providers/services are inserted, names, capacities and durations are updated.
+ * new providers/services are inserted, names, capacities, opening hours and durations are updated.
  * Entries removed from the configuration are kept, because appointments may reference them.
  */
 @Component
@@ -33,10 +33,11 @@ class CatalogInitializer implements ApplicationRunner {
         for (var config : properties.providers()) {
             Provider provider = providers.findById(config.id())
                     .map(existing -> {
-                        existing.update(config.name(), config.capacity());
+                        existing.update(config.name(), config.capacity(), config.toOpeningHours());
                         return existing;
                     })
-                    .orElseGet(() -> providers.save(new Provider(config.id(), config.name(), config.capacity())));
+                    .orElseGet(() -> providers.save(new Provider(config.id(), config.name(), config.capacity(),
+                            config.toOpeningHours())));
 
             for (var serviceConfig : config.services()) {
                 services.findByProviderIdAndCode(provider.getId(), serviceConfig.code())
@@ -45,8 +46,8 @@ class CatalogInitializer implements ApplicationRunner {
                                 () -> services.save(new ServiceOffering(provider, serviceConfig.code(),
                                         serviceConfig.name(), serviceConfig.durationMinutes())));
             }
-            log.info("Catalog: provider {} (capacity {}) with {} services",
-                    provider.getId(), provider.getCapacity(), config.services().size());
+            log.info("Catalog: provider {} (capacity {}, {}) with {} services", provider.getId(),
+                    provider.getCapacity(), config.toOpeningHours(), config.services().size());
         }
     }
 }
