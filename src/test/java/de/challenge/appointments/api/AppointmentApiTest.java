@@ -52,6 +52,40 @@ class AppointmentApiTest extends IntegrationTest {
     }
 
     @Test
+    void returnsASingleProvider() throws Exception {
+        mvc.perform(get(MUELLER))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("IT-MUELLER"))
+                .andExpect(jsonPath("$.name").value("IT-Service Müller"))
+                .andExpect(jsonPath("$.capacity").value(2));
+    }
+
+    @Test
+    void errorsAreProblemDetails() throws Exception {
+        book(MUELLER, "DIA", "C-1", "2026-11-02T09:10:00Z")
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string("Content-Type", "application/problem+json"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.title").value("Invalid request"));
+    }
+
+    @Test
+    void rejectsBodiesWithMissingFields() throws Exception {
+        mvc.perform(post(MUELLER + "/appointments").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerNumber":"C-1","start":"2026-11-02T09:00:00Z"}
+                                """))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(MUELLER + "/appointments").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerNumber":"C-1","repairServiceId":"DIA"}
+                                """))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(MUELLER + "/appointments").contentType(MediaType.APPLICATION_JSON).content("{"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void bookingComputesEndFromProviderSpecificDuration() throws Exception {
         book(MUELLER, "LAP", "C-1", "2026-11-02T09:00:00Z")
                 .andExpect(status().isCreated())
@@ -145,6 +179,35 @@ class AppointmentApiTest extends IntegrationTest {
     }
 
     @Test
+    void peakConcurrencyNotOverlapCountDecides() throws Exception {
+        // Müller, capacity 2: A 08:00-08:30, B 08:30-09:00, C 09:00-09:30 all overlap 08:00-10:00,
+        // but only one of them runs at any instant, so a 2h laptop service still fits.
+        book(MUELLER, "DIA", "A", "2026-11-02T08:00:00Z").andExpect(status().isCreated());
+        book(MUELLER, "DIA", "B", "2026-11-02T08:30:00Z").andExpect(status().isCreated());
+        book(MUELLER, "DIA", "C", "2026-11-02T09:00:00Z").andExpect(status().isCreated());
+
+        mvc.perform(get(MUELLER + "/appointment-suggestions").param("repairServiceId", "LAP")
+                        .param("from", "2026-11-02T08:00:00Z").param("to", "2026-11-02T10:00:00Z"))
+                .andExpect(jsonPath("$[*].start").value(org.hamcrest.Matchers.contains("2026-11-02T08:00:00Z")));
+        book(MUELLER, "LAP", "D", "2026-11-02T08:00:00Z").andExpect(status().isCreated());
+
+        // Now two run in parallel during the whole morning: nothing else fits anywhere in 08:00-10:00.
+        book(MUELLER, "DIA", "E", "2026-11-02T09:30:00Z").andExpect(status().isCreated()); // after C ends
+        book(MUELLER, "DIA", "F", "2026-11-02T08:15:00Z").andExpect(status().isConflict());
+        book(MUELLER, "DIA", "F", "2026-11-02T09:15:00Z").andExpect(status().isConflict()); // overlaps C and E
+    }
+
+    @Test
+    void schneiderAllowsThreeParallelAppointmentsButNotFour() throws Exception {
+        book(SCHNEIDER, "DAT", "C-1", "2026-11-02T08:00:00Z").andExpect(status().isCreated());
+        book(SCHNEIDER, "VIR", "C-2", "2026-11-02T09:00:00Z").andExpect(status().isCreated());
+        book(SCHNEIDER, "DIA", "C-3", "2026-11-02T09:30:00Z").andExpect(status().isCreated());
+
+        book(SCHNEIDER, "DIA", "C-4", "2026-11-02T09:30:00Z").andExpect(status().isConflict());
+        book(SCHNEIDER, "DIA", "C-4", "2026-11-02T09:45:00Z").andExpect(status().isCreated()); // DIA 09:30 ended
+    }
+
+    @Test
     void sameCustomerServiceAndStartIsADuplicate() throws Exception {
         book(SCHNEIDER, "VIR", "C-1", "2026-11-02T09:00:00Z").andExpect(status().isCreated());
         book(SCHNEIDER, "VIR", "C-1", "2026-11-02T09:00:00Z").andExpect(status().isConflict());
@@ -166,6 +229,15 @@ class AppointmentApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].end").value("2026-11-02T12:00:00Z"))
                 .andExpect(jsonPath("$[0].serviceId").value("IT-MUELLER"))
                 .andExpect(jsonPath("$[0].repairServiceId").value("LAP"));
+    }
+
+    @Test
+    void suggestionsRoundAnUnalignedFromUpAndEndByTo() throws Exception {
+        mvc.perform(get(MUELLER + "/appointment-suggestions").param("repairServiceId", "OSI")
+                        .param("from", "2026-11-02T08:07:00Z").param("to", "2026-11-02T10:00:00Z"))
+                .andExpect(jsonPath("$[*].start").value(org.hamcrest.Matchers.contains(
+                        "2026-11-02T08:15:00Z", "2026-11-02T08:30:00Z", "2026-11-02T08:45:00Z", "2026-11-02T09:00:00Z")))
+                .andExpect(jsonPath("$[3].end").value("2026-11-02T10:00:00Z"));
     }
 
     @Test

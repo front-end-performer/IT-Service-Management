@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -124,11 +125,57 @@ class ImportApiTest extends IntegrationTest {
                         .param("to", "2026-11-02T10:30:00Z"))
                 .andExpect(jsonPath("$[*].start").value(contains("2026-11-02T09:45:00Z", "2026-11-02T10:00:00Z")));
 
-        mvc.perform(multipart("/it-services/IT-MUELLER/appointments").contentType("application/json")
+        mvc.perform(post("/it-services/IT-MUELLER/appointments").contentType("application/json")
                         .content("""
                                 {"customerNumber":"C-1","start":"2026-11-02T09:15:00Z","repairServiceId":"DIA"}
                                 """))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void sameServiceCodeUsesTheDurationOfTheTargetProvider() throws Exception {
+        byte[] csv = "KdnNr,APP_DATE,SERVICE\n1,2026-11-09T08:00Z,DIA\n".getBytes();
+
+        upload("IT-MUELLER", "dia.csv", csv).andExpect(jsonPath("$.imported").value(1));
+        upload("CS-SCHNEIDER", "dia.csv", csv).andExpect(jsonPath("$.imported").value(1));
+
+        mvc.perform(get("/it-services/IT-MUELLER/appointments"))
+                .andExpect(jsonPath("$[0].end").value("2026-11-09T08:30:00Z"));
+        mvc.perform(get("/it-services/CS-SCHNEIDER/appointments"))
+                .andExpect(jsonPath("$[0].end").value("2026-11-09T08:15:00Z"));
+    }
+
+    @Test
+    void fileOrderDecidesWhichConflictingRowIsImported() throws Exception {
+        // Capacity 2 at Müller: the first two rows win, the third is rejected – regardless of customer number.
+        byte[] csv = """
+                KdnNr,APP_DATE,SERVICE
+                Z-LAST,2026-11-09T08:00Z,LAP
+                A-FIRST,2026-11-09T09:00Z,OSI
+                M-MIDDLE,2026-11-09T09:30Z,DIA
+                """.getBytes();
+
+        upload("IT-MUELLER", "order.csv", csv)
+                .andExpect(jsonPath("$.imported").value(2))
+                .andExpect(jsonPath("$.rejections[0].lineNumber").value(4))
+                .andExpect(jsonPath("$.rejections[0].rawLine").value("M-MIDDLE,2026-11-09T09:30Z,DIA"))
+                .andExpect(jsonPath("$.rejections[0].reason").value("CAPACITY_EXCEEDED"));
+    }
+
+    @Test
+    void importRespectsAppointmentsBookedBefore() throws Exception {
+        for (String customer : new String[] {"B-1", "B-2"}) {
+            mvc.perform(post("/it-services/IT-MUELLER/appointments").contentType("application/json")
+                            .content("""
+                                    {"customerNumber":"%s","start":"2026-11-09T08:00:00Z","repairServiceId":"LAP"}
+                                    """.formatted(customer)))
+                    .andExpect(status().isCreated());
+        }
+
+        upload("IT-MUELLER", "late.csv", "KdnNr,APP_DATE,SERVICE\nL-1,2026-11-09T09:45Z,DIA\nL-2,2026-11-09T10:00Z,DIA\n".getBytes())
+                .andExpect(jsonPath("$.imported").value(1))
+                .andExpect(jsonPath("$.rejections[0].reason").value("CAPACITY_EXCEEDED"))
+                .andExpect(jsonPath("$.rejections[0].rawLine").value("L-1,2026-11-09T09:45Z,DIA"));
     }
 
     @Test
