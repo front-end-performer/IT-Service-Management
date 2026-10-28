@@ -2,16 +2,12 @@ package de.challenge.appointments.acceptance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import de.challenge.appointments.Simultaneously;
 import de.challenge.appointments.scheduling.CapacityCalculator;
 import de.challenge.appointments.scheduling.TimeSlot;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -22,23 +18,10 @@ class ConcurrencyAcceptanceTest extends AcceptanceTest {
     }
 
     private List<Integer> fireSimultaneously(List<Request> requests) throws Exception {
-        CountDownLatch go = new CountDownLatch(1);
-        List<Integer> statuses = Collections.synchronizedList(new ArrayList<>());
-        try (ExecutorService pool = Executors.newFixedThreadPool(requests.size())) {
-            List<Future<?>> futures = new ArrayList<>();
-            for (Request r : requests) {
-                futures.add(pool.submit(() -> {
-                    go.await();
-                    statuses.add(book(MUELLER, r.serviceCode(), r.customer(), r.start()).andReturn().getResponse().getStatus());
-                    return null;
-                }));
-            }
-            go.countDown();
-            for (Future<?> future : futures) {
-                future.get();
-            }
-        }
-        return statuses;
+        return Simultaneously.run(requests.size(), i -> {
+            Request r = requests.get(i);
+            return () -> book(MUELLER, r.serviceCode(), r.customer(), r.start()).andReturn().getResponse().getStatus();
+        });
     }
 
     private int peakConcurrencyInDatabase(String providerId) {

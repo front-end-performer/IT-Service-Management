@@ -12,13 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -68,29 +62,15 @@ class H2ProfileTest {
                 .isInstanceOf(ConflictException.class);
 
         Instant slot = Instant.parse("2026-11-10T09:00:00Z");
-        CountDownLatch start = new CountDownLatch(1);
-        AtomicInteger succeeded = new AtomicInteger();
-        try (ExecutorService pool = Executors.newFixedThreadPool(10)) {
-            List<Future<?>> futures = new ArrayList<>();
-            for (int i = 0; i < 10; i++) {
-                String customer = "P-" + i;
-                futures.add(pool.submit(() -> {
-                    start.await();
-                    try {
-                        booking.book("IT-MUELLER", "LAP", customer, slot);
-                        succeeded.incrementAndGet();
-                    } catch (ConflictException expected) {
-                        // lost the race
-                    }
-                    return null;
-                }));
+        List<Boolean> booked = Simultaneously.run(10, i -> () -> {
+            try {
+                booking.book("IT-MUELLER", "LAP", "P-" + i, slot);
+                return true;
+            } catch (ConflictException lostTheRace) {
+                return false;
             }
-            start.countDown();
-            for (Future<?> future : futures) {
-                future.get();
-            }
-        }
-        assertThat(succeeded.get()).isEqualTo(2);
+        });
+        assertThat(booked).filteredOn(b -> b).hasSize(2);
         assertThat(jdbc.queryForObject("select count(*) from appointment where start_at = ?", Integer.class,
                 java.sql.Timestamp.from(slot))).isEqualTo(2);
     }

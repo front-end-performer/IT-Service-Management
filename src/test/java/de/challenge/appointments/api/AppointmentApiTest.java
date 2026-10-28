@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import de.challenge.appointments.IntegrationTest;
+import de.challenge.appointments.Simultaneously;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -246,24 +247,8 @@ class AppointmentApiTest extends IntegrationTest {
 
     @Test
     void parallelHttpRequestsGet201UntilCapacityThen409() throws Exception {
-        int requests = 12;
-        var start = new java.util.concurrent.CountDownLatch(1);
-        var statuses = java.util.Collections.synchronizedList(new java.util.ArrayList<Integer>());
-        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(requests)) {
-            var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
-            for (int i = 0; i < requests; i++) {
-                String customer = "HTTP-" + i;
-                futures.add(pool.submit(() -> {
-                    start.await();
-                    statuses.add(book(MUELLER, "LAP", customer, "2026-11-02T09:00:00Z").andReturn().getResponse().getStatus());
-                    return null;
-                }));
-            }
-            start.countDown();
-            for (var future : futures) {
-                future.get();
-            }
-        }
+        var statuses = Simultaneously.run(12, i ->
+                () -> book(MUELLER, "LAP", "HTTP-" + i, "2026-11-02T09:00:00Z").andReturn().getResponse().getStatus());
 
         assertThat(statuses).containsOnly(201, 409);
         assertThat(statuses.stream().filter(s -> s == 201).count()).isEqualTo(2); // capacity of Müller

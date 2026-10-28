@@ -41,10 +41,13 @@ class ImportController {
         }
         try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
             var batch = imports.importCsv(serviceId, file.getOriginalFilename(), reader);
-            return ResponseEntity.created(URI.create("/it-services/%s/appointment-imports/%s"
-                            .formatted(serviceId, batch.getId())))
-                    .body(ImportReportDto.of(batch, true));
+            return ResponseEntity.created(reportUri(serviceId, batch.getId())).body(ImportReportDto.of(batch, true));
         }
+    }
+
+    /** Where an import report can be retrieved; also the Location of an aborted import. */
+    static URI reportUri(String serviceId, String importId) {
+        return URI.create("/it-services/%s/appointment-imports/%s".formatted(serviceId, importId));
     }
 
     @GetMapping

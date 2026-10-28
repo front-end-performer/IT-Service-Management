@@ -15,11 +15,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntFunction;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -136,35 +133,21 @@ class ConcurrentBookingTest extends IntegrationTest {
     private record Outcome(int succeeded, int conflicts) {
     }
 
-    private interface TaskFactory {
-        Callable<Object> create(int index);
-    }
-
-    private Outcome runConcurrently(int count, TaskFactory tasks) throws Exception {
-        CountDownLatch start = new CountDownLatch(1);
-        AtomicInteger succeeded = new AtomicInteger();
-        AtomicInteger conflicts = new AtomicInteger();
-        try (ExecutorService pool = Executors.newFixedThreadPool(count)) {
-            List<Future<?>> futures = new ArrayList<>();
-            for (int i = 0; i < count; i++) {
-                Callable<Object> task = tasks.create(i);
-                futures.add(pool.submit(() -> {
-                    start.await();
-                    try {
-                        task.call();
-                        succeeded.incrementAndGet();
-                    } catch (ConflictException e) {
-                        conflicts.incrementAndGet();
-                    }
-                    return null;
-                }));
-            }
-            start.countDown();
-            for (Future<?> future : futures) {
-                future.get(); // surfaces unexpected exceptions
-            }
-        }
-        return new Outcome(succeeded.get(), conflicts.get());
+    /** Runs the tasks simultaneously and counts which booked and which lost with a ConflictException. */
+    private Outcome runConcurrently(int count, IntFunction<Callable<Object>> tasks) throws Exception {
+        List<Boolean> booked = Simultaneously.run(count, i -> {
+            Callable<Object> task = tasks.apply(i);
+            return () -> {
+                try {
+                    task.call();
+                    return true;
+                } catch (ConflictException e) {
+                    return false;
+                }
+            };
+        });
+        int succeeded = (int) booked.stream().filter(b -> b).count();
+        return new Outcome(succeeded, count - succeeded);
     }
 
     private void assertPeakConcurrencyWithinCapacity(String providerId, int capacity) {

@@ -4,7 +4,6 @@ import de.challenge.appointments.common.ConflictException;
 import de.challenge.appointments.common.InvalidRequestException;
 import de.challenge.appointments.common.NotFoundException;
 import de.challenge.appointments.imports.ImportFailedException;
-import java.net.URI;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
@@ -56,7 +55,7 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = problem(HttpStatus.INTERNAL_SERVER_ERROR, "Import aborted", e.getMessage());
         problem.setProperty("importId", e.getImportId());
         return ResponseEntity.internalServerError()
-                .location(URI.create("/it-services/%s/appointment-imports/%s".formatted(e.getProviderId(), e.getImportId())))
+                .location(ImportController.reportUri(e.getProviderId(), e.getImportId()))
                 .body(problem);
     }
 
