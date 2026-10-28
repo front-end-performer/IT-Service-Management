@@ -68,4 +68,15 @@ class SlotFinderTest {
         // Any 2h candidate covering 09:30-10:00 would be the third one.
         assertThat(starts(free)).containsExactly(at("10:00"));
     }
+
+    @Test
+    void durationsThatAreNotMultiplesOfFifteenMinutesWork() {
+        // Starts stay on the grid, ends need not: a 20-minute service 08:00-08:20 blocks the 08:15 start.
+        var booked = List.of(slot("08:00", 20));
+
+        var free = SlotFinder.findFreeSlots(at("08:00"), at("09:00"), Duration.ofMinutes(20), booked, 1);
+
+        assertThat(starts(free)).containsExactly(at("08:30"));
+        assertThat(free.getFirst().end()).isEqualTo(at("08:50"));
+    }
 }
