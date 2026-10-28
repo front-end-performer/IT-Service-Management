@@ -74,6 +74,42 @@ class AppointmentApiTest extends IntegrationTest {
     }
 
     @Test
+    void acceptsTimesWithoutSeconds() throws Exception {
+        // The legacy CSV writes 2026-11-02T08:00Z; the API accepts the same short form.
+        book(MUELLER, "DIA", "C-1", "2026-11-02T08:00Z")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.start").value("2026-11-02T08:00:00Z"));
+        mvc.perform(get(MUELLER + "/appointments").param("from", "2026-11-02T08:00Z").param("to", "2026-11-02T08:00Z"))
+                .andExpect(jsonPath("$", hasSize(1)));
+        mvc.perform(get(MUELLER + "/appointment-suggestions").param("repairServiceId", "DIA")
+                        .param("from", "2026-11-02T08:00Z").param("to", "2026-11-02T10:00+01:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].start").value(org.hamcrest.Matchers.contains(
+                        "2026-11-02T08:00:00Z", "2026-11-02T08:15:00Z", "2026-11-02T08:30:00Z")));
+    }
+
+    @Test
+    void rejectsBookingsInThePast() throws Exception {
+        // "Now" is 2026-10-28T12:00Z (FixedClockConfiguration).
+        book(MUELLER, "DIA", "C-1", "2026-10-28T11:45:00Z")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Start 2026-10-28T11:45:00Z is in the past"));
+        book(MUELLER, "DIA", "C-1", "2026-10-28T12:00:00Z").andExpect(status().isCreated());
+    }
+
+    @Test
+    void neverSuggestsPastSlots() throws Exception {
+        mvc.perform(get(MUELLER + "/appointment-suggestions").param("repairServiceId", "DIA")
+                        .param("from", "2026-10-28T11:00:00Z").param("to", "2026-10-28T13:00:00Z"))
+                .andExpect(jsonPath("$[*].start").value(org.hamcrest.Matchers.contains(
+                        "2026-10-28T12:00:00Z", "2026-10-28T12:15:00Z", "2026-10-28T12:30:00Z")));
+        mvc.perform(get(MUELLER + "/appointment-suggestions").param("repairServiceId", "DIA")
+                        .param("from", "2026-10-27T08:00:00Z").param("to", "2026-10-27T18:00:00Z"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
     void rejectsStartOffTheQuarterHourGrid() throws Exception {
         book(MUELLER, "DIA", "C-1", "2026-11-02T09:10:00Z")
                 .andExpect(status().isBadRequest())

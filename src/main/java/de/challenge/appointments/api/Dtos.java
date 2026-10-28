@@ -12,6 +12,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -48,8 +49,9 @@ final class Dtos {
         }
     }
 
+    /** {@code start} accepts any offset and optional seconds (e.g. the legacy form 2026-11-02T08:00Z). */
     record AppointmentRequest(@NotBlank @Size(max = 64) String customerNumber,
-                              @NotNull Instant start,
+                              @NotNull OffsetDateTime start,
                               @NotBlank String repairServiceId) {
     }
 

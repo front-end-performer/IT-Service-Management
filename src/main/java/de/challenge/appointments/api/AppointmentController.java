@@ -51,7 +51,7 @@ class AppointmentController {
     ResponseEntity<AppointmentDto> createAppointment(@PathVariable String serviceId,
                                                      @Valid @RequestBody AppointmentRequest request) {
         var appointment = booking.book(serviceId, request.repairServiceId(), request.customerNumber().trim(),
-                request.start());
+                request.start().toInstant());
         return ResponseEntity.created(URI.create("/it-services/%s/appointments/%s"
                         .formatted(serviceId, appointment.getId())))
                 .body(AppointmentDto.of(appointment));

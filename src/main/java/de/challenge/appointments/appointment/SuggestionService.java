@@ -8,6 +8,7 @@ import de.challenge.appointments.common.InvalidRequestException;
 import de.challenge.appointments.common.NotFoundException;
 import de.challenge.appointments.scheduling.SlotFinder;
 import de.challenge.appointments.scheduling.TimeSlot;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -26,12 +27,14 @@ public class SuggestionService {
     private final ProviderRepository providers;
     private final RepairServiceRepository services;
     private final AppointmentRepository appointments;
+    private final Clock clock;
 
     SuggestionService(ProviderRepository providers, RepairServiceRepository services,
-                      AppointmentRepository appointments) {
+                      AppointmentRepository appointments, Clock clock) {
         this.providers = providers;
         this.services = services;
         this.appointments = appointments;
+        this.clock = clock;
     }
 
     public record Suggestion(TimeSlot slot, Provider provider, RepairService service) {
@@ -51,9 +54,15 @@ public class SuggestionService {
                 .orElseThrow(() -> new NotFoundException(
                         "Service '%s' is not offered by '%s'".formatted(serviceCode, providerId)));
 
-        List<TimeSlot> booked = appointments.findOverlapping(providerId, from, to).stream()
+        // Slots in the past are never offered; a range entirely in the past yields no suggestions.
+        Instant now = clock.instant();
+        Instant earliest = from.isBefore(now) ? now : from;
+        if (!earliest.isBefore(to)) {
+            return List.of();
+        }
+        List<TimeSlot> booked = appointments.findOverlapping(providerId, earliest, to).stream()
                 .map(Appointment::slot).toList();
-        return SlotFinder.findFreeSlots(from, to, service.getDuration(), booked, provider.getCapacity()).stream()
+        return SlotFinder.findFreeSlots(earliest, to, service.getDuration(), booked, provider.getCapacity()).stream()
                 .map(slot -> new Suggestion(slot, provider, service))
                 .toList();
     }

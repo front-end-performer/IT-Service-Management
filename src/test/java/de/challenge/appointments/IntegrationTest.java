@@ -8,10 +8,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Base for tests against a real PostgreSQL (Testcontainers). The catalog from application.yml
- * is loaded once; appointments and imports are wiped before every test.
+ * is loaded once; appointments and imports are wiped before every test. "Now" is fixed, see
+ * {@link FixedClockConfiguration}.
  */
 @SpringBootTest
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, FixedClockConfiguration.class})
 public abstract class IntegrationTest {
 
     @Autowired

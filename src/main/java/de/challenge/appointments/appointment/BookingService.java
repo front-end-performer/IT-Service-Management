@@ -7,6 +7,7 @@ import de.challenge.appointments.catalog.RepairServiceRepository;
 import de.challenge.appointments.common.ConflictException;
 import de.challenge.appointments.common.InvalidRequestException;
 import de.challenge.appointments.common.NotFoundException;
+import java.time.Clock;
 import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +18,14 @@ public class BookingService {
     private final ProviderRepository providers;
     private final RepairServiceRepository services;
     private final AppointmentScheduler scheduler;
+    private final Clock clock;
 
-    BookingService(ProviderRepository providers, RepairServiceRepository services, AppointmentScheduler scheduler) {
+    BookingService(ProviderRepository providers, RepairServiceRepository services, AppointmentScheduler scheduler,
+                   Clock clock) {
         this.providers = providers;
         this.services = services;
         this.scheduler = scheduler;
+        this.clock = clock;
     }
 
     /**
@@ -35,6 +39,11 @@ public class BookingService {
         RepairService service = services.findByProviderIdAndCode(provider.getId(), serviceCode)
                 .orElseThrow(() -> new NotFoundException(
                         "Service '%s' is not offered by '%s'".formatted(serviceCode, providerId)));
+
+        // Only new bookings must lie in the future; imported legacy appointments may be historic.
+        if (start.isBefore(clock.instant())) {
+            throw new InvalidRequestException("Start %s is in the past".formatted(start));
+        }
 
         var result = scheduler.schedule(service, customerNumber, start, AppointmentSource.BOOKED, null);
         return switch (result.outcome()) {
