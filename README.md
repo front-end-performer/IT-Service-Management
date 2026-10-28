@@ -89,8 +89,9 @@ curl $H/it-services/IT-MUELLER/appointments/{appointmentId}
 Errors are returned as RFC 9457 problem details: `400` for invalid input or an off-grid start, `404` for an unknown
 provider, service or appointment, and `409` when there is no capacity left or the booking is a duplicate.
 
-All times are UTC `Instant`s. Inputs may carry any offset (`2026-11-02T10:00+01:00`), and outputs are always
-`…Z`. The UI shows and accepts UTC as well.
+All times are UTC `Instant`s. Inputs may carry any offset and may omit seconds (`2026-11-02T10:00+01:00`,
+`2026-11-02T08:00Z`). Outputs are always `…Z`. The UI shows and accepts UTC as well. Note that 08:00Z in November
+is 09:00 in Germany (CET).
 
 ## Scheduling rules
 
@@ -98,6 +99,10 @@ All times are UTC `Instant`s. Inputs may carry any offset (`2026-11-02T10:00+01:
 - Intervals are half-open, `[start, end)`. An appointment ending at 09:00 does not overlap one starting at 09:00.
 - A slot is free when the **peak** number of appointments running in parallel during its **whole** duration
   stays below the capacity. Booked and imported appointments count the same way.
+- New bookings must not start in the past (400), and suggestions never include past slots. Imported legacy
+  appointments may be historic.
+- Durations need not be multiples of 15 minutes. Only starts are on the grid, and the capacity check uses exact
+  intervals.
 - Suggestions are every grid start in `[from, to]` whose service finishes by `to` and that fits. The search range is
   limited to 31 days. There are no opening hours, because the task doesn't define any.
 - Overbooking under concurrent requests is prevented with a row lock on the provider during the re-check and the
@@ -121,14 +126,15 @@ catalog:
 ## Tests
 
 ```bash
-./mvnw test     # 50 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
+./mvnw test     # 56 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
 ```
 
 | Test | Covers |
 |---|---|
 | `CapacityCalculatorTest`, `SlotFinderTest`, `TimeGridTest` | Overlaps, touching intervals, a peak inside the duration, Müller (cap 2) and Schneider (cap 3) scenarios, grid rounding |
-| `AppointmentApiTest` | Booking (201/400/404/409), the end time per provider, duplicates, suggestions, filters, details |
+| `AppointmentApiTest` | Booking (201/400/404/409), the end time per provider, past starts, times without seconds, duplicates, suggestions, filters, details |
 | `ConcurrentBookingTest` | 20 parallel bookings of one slot give exactly 2 created and 18 conflicts; 60 parallel overlapping bookings stay within capacity 3 |
+| `SpecContractTest` | Implemented endpoints and DTO fields match `rest-api-spec.yml` exactly |
 | `ImportApiTest`, `CsvAppointmentParserTest` | Real legacy files, wrong-provider import, re-import, every rejection reason with its line number, header errors |
 
 To check that the concurrency test actually works, I replaced the locking read with a plain `findById`. With that

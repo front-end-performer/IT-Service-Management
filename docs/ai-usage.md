@@ -30,6 +30,16 @@ with a human developer making the decisions and reviewing the results.
    overlap 09:15–09:45, where capacity is already reached. The test was corrected and the reasoning recorded in a
    comment.
 
+5. **Review against external checklists.** After the first version, the developer provided two reviewer-style
+   checklists of common pitfalls: concurrency, peak concurrency versus overlap count, CSV import decisions, spec
+   naming and gaps. Claude compared every point with the code. Most were already covered; the comparison found three
+   gaps, which were fixed with tests:
+   - past slots were suggested and bookable;
+   - the booking body rejected `2026-11-02T08:00Z`, which has no seconds;
+   - there was no automated check that the implementation matches the Swagger 2.0 spec (now `SpecContractTest`).
+
+   The integration tests also got a fixed clock, so they don't expire after 2026-11-02.
+
 ## What the human did
 
 - Set the scope and constraints: Ext JS sourcing, no opening hours, build tool and database.
