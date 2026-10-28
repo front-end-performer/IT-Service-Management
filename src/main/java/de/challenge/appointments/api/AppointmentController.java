@@ -28,8 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/it-services/{serviceId}")
 class AppointmentController {
 
-    static final int DEFAULT_PAGE_SIZE = 100;
-    static final int MAX_PAGE_SIZE = 500;
     static final String TOTAL_COUNT_HEADER = "X-Total-Count";
 
     private final AppointmentQueryService queries;
@@ -43,8 +41,8 @@ class AppointmentController {
     }
 
     /**
-     * Paged (extension): the body stays the plain array of the spec, the total is in {@code X-Total-Count}.
-     * Without paging parameters the first {@value #DEFAULT_PAGE_SIZE} appointments are returned.
+     * Without {@code page}/{@code size} all matching appointments are returned, exactly as specified.
+     * Paging is an opt-in extension; the body stays the plain array and the total is in {@code X-Total-Count}.
      */
     @GetMapping("/appointments")
     ResponseEntity<List<AppointmentDto>> getAppointments(
@@ -53,8 +51,8 @@ class AppointmentController {
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) OffsetDateTime to,
             @RequestParam(required = false) String repairServiceId,
             @RequestParam(required = false) String customerNumber,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) @Min(1) @Max(MAX_PAGE_SIZE) int size) {
+            @RequestParam(required = false) @Min(0) Integer page,
+            @RequestParam(required = false) @Min(1) @Max(AppointmentQueryService.MAX_PAGE_SIZE) Integer size) {
         var filter = new AppointmentQueryService.Filter(instant(from), instant(to), blankToNull(repairServiceId),
                 blankToNull(customerNumber));
         var result = queries.list(serviceId, filter, page, size);

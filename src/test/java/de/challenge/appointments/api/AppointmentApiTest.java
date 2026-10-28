@@ -84,8 +84,13 @@ class AppointmentApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$[*].customerNumber").value(org.hamcrest.Matchers.contains("P-09:00", "P-09:30")));
         mvc.perform(get(MUELLER + "/appointments").param("page", "2").param("size", "2"))
                 .andExpect(jsonPath("$[*].customerNumber").value(org.hamcrest.Matchers.contains("P-10:00")));
+        // Paging is opt-in: without page/size the spec's behaviour applies and everything is returned.
         mvc.perform(get(MUELLER + "/appointments"))
                 .andExpect(header().string("X-Total-Count", "5"))
+                .andExpect(jsonPath("$", hasSize(5)));
+        mvc.perform(get(MUELLER + "/appointments").param("size", "2"))
+                .andExpect(jsonPath("$[*].customerNumber").value(org.hamcrest.Matchers.contains("P-08:00", "P-08:30")));
+        mvc.perform(get(MUELLER + "/appointments").param("page", "0"))
                 .andExpect(jsonPath("$", hasSize(5)));
         mvc.perform(get(MUELLER + "/appointments").param("size", "0")).andExpect(status().isBadRequest());
         mvc.perform(get(MUELLER + "/appointments").param("size", "501")).andExpect(status().isBadRequest());

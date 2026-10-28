@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -31,9 +32,16 @@ public class AppointmentQueryService {
         this.appointments = appointments;
     }
 
-    /** One page of the provider's appointments matching the filter, ordered by start. */
+    public static final int DEFAULT_PAGE_SIZE = 100;
+    public static final int MAX_PAGE_SIZE = 500;
+    private static final Sort BY_START = Sort.by("start", "id");
+
+    /**
+     * The provider's appointments matching the filter, ordered by start. Paging is opt-in: without
+     * {@code page} and {@code size} all matches are returned, as the spec describes the list.
+     */
     @Transactional(readOnly = true)
-    public Page<Appointment> list(String providerId, Filter filter, int page, int size) {
+    public Page<Appointment> list(String providerId, Filter filter, Integer page, Integer size) {
         catalog.requireProvider(providerId);
         if (filter.from() != null && filter.to() != null && filter.from().isAfter(filter.to())) {
             throw new InvalidRequestException("'from' must not be after 'to'");
@@ -52,7 +60,10 @@ public class AppointmentQueryService {
         if (filter.customerNumber() != null) {
             specs.add((root, query, cb) -> cb.equal(root.get("customerNumber"), filter.customerNumber()));
         }
-        return appointments.findAll(Specification.allOf(specs), PageRequest.of(page, size, Sort.by("start", "id")));
+        Pageable pageable = page == null && size == null
+                ? Pageable.unpaged(BY_START)
+                : PageRequest.of(page == null ? 0 : page, size == null ? DEFAULT_PAGE_SIZE : size, BY_START);
+        return appointments.findAll(Specification.allOf(specs), pageable);
     }
 
     @Transactional(readOnly = true)
