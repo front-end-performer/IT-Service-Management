@@ -394,7 +394,7 @@ class AppointmentApiTest extends IntegrationTest {
         mvc.perform(get(location))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
-                .andExpect(jsonPath("$.repairServiceName").value("Betriebssystem-Installation"));
+                .andExpect(jsonPath("$.repairServiceName").value("Betriebssysteminstallation"));
         mvc.perform(get(SCHNEIDER + "/appointments/" + id)).andExpect(status().isNotFound());
     }
 }

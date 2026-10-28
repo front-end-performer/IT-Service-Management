@@ -30,7 +30,7 @@ class BookingAcceptanceTest extends AcceptanceTest {
                 .andExpect(jsonPath("$.serviceId").value(MUELLER))
                 .andExpect(jsonPath("$.serviceName").value("IT-Service Müller"))
                 .andExpect(jsonPath("$.repairServiceId").value("OSI"))
-                .andExpect(jsonPath("$.repairServiceName").value("Betriebssystem-Installation"))
+                .andExpect(jsonPath("$.repairServiceName").value("Betriebssysteminstallation"))
                 .andReturn().getResponse().getHeader("Location");
 
         mvc.perform(get(location)).andExpect(status().isOk()).andExpect(jsonPath("$.customerNumber").value("B1"));

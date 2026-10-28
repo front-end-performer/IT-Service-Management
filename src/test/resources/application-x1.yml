@@ -10,7 +10,7 @@ catalog:
       services:
         - { code: DIA, name: PC-Diagnose, duration-minutes: 30 }
         - { code: LAP, name: Laptop-Service, duration-minutes: 120 }
-        - { code: OSI, name: Betriebssystem-Installation, duration-minutes: 60 }
+        - { code: OSI, name: Betriebssysteminstallation, duration-minutes: 60 }
     - id: CS-SCHNEIDER
       name: Computer-Service Schneider
       capacity: 3

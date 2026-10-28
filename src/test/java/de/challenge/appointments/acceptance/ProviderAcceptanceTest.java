@@ -46,7 +46,7 @@ class ProviderAcceptanceTest extends AcceptanceTest {
                 .andExpect(jsonPath("$[?(@.code=='OSI')].durationMinutes").value(60))
                 .andExpect(jsonPath("$[?(@.code=='DIA')].name").value("PC-Diagnose"))
                 .andExpect(jsonPath("$[?(@.code=='LAP')].name").value("Laptop-Service"))
-                .andExpect(jsonPath("$[?(@.code=='OSI')].name").value("Betriebssystem-Installation"));
+                .andExpect(jsonPath("$[?(@.code=='OSI')].name").value("Betriebssysteminstallation"));
         mvc.perform(get("/it-services/{p}/services", SCHNEIDER))
                 .andExpect(jsonPath("$[*].code", containsInAnyOrder("DIA", "VIR", "DAT")))
                 .andExpect(jsonPath("$[?(@.code=='DIA')].durationMinutes").value(15))

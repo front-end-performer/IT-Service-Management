@@ -53,7 +53,7 @@ catalog:
           name: Laptop-Service
           duration-minutes: 120
         - code: OSI
-          name: Betriebssystem-Installation
+          name: Betriebssysteminstallation
           duration-minutes: 60
     - id: CS-SCHNEIDER
       name: Computer-Service Schneider
