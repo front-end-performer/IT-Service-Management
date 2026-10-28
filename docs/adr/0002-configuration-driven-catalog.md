@@ -83,6 +83,16 @@ veröffentlichen und den Code weiter akzeptieren.
   Codeänderungen noch Migrationen sind nötig.
 - **Eine geänderte Dauer** wirkt sich nur auf künftige Buchungen aus. Bestehende Termine behalten ihre gespeicherte
   Endzeit, die sichere Wahl für bereits vereinbarte Termine.
+- **Ein entfernter Anbieter oder eine entfernte Dienstleistung bleibt buchbar.** Die Zeile bleibt in der Datenbank,
+  weil Termine auf sie verweisen, und es gibt kein Merkmal „inaktiv“. Nach dem Neustart wird sie also weiterhin
+  aufgelistet, vorgeschlagen, gebucht und importiert. Wer einen Eintrag wirklich stilllegen will, braucht eine Spalte
+  `active` (Flyway-Migration), die der Abgleich für fehlende Einträge auf `false` setzt und die `CatalogService` beim
+  Auflisten und Buchen beachtet. Bestehende Termine blieben lesbar. Bewusst nicht umgesetzt, siehe
+  [Register E1](../deviations.md#e--bekannte-grenzen).
+- **Eine gesenkte Kapazität oder verkürzte Öffnungszeiten** gelten nur für neue Buchungen und Importe. Bestehende
+  Termine werden nicht erneut geprüft. Ein Zeitraum kann danach mehr gleichzeitige Termine haben als die neue
+  Kapazität oder außerhalb der neuen Öffnungszeiten liegen; er nimmt aber keine weiteren an. Wer die Kapazität senkt,
+  klärt betroffene Termine selbst. Siehe [Register E2](../deviations.md#e--bekannte-grenzen).
 - Keine schreibende API für den Katalog. Die Aufgabe verlangt die Verwaltung von Anbietern und Dienstleistungen, aber
   nicht über REST, und die Spezifikation hat keine solchen Endpunkte. Eine Admin-API könnte später in dieselben
   Tabellen schreiben.

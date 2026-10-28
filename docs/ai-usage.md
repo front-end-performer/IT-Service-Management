@@ -326,6 +326,35 @@ ein menschlicher Entwickler die Entscheidungen traf und die Ergebnisse
     wurden die Race-Tests erneut geprüft: Alle fünf schlagen ohne Sperre
     fehl.
 
+16. **Überarbeitung der Oberfläche anhand eines Designentwurfs.**
+
+    Der Entwickler legte einen Designentwurf (vier Ansichten) vor.
+    Claude glich ihn mit Aufgabe, API und bestehender Oberfläche ab und
+    fand Stellen, die die API nicht liefert oder anders meint: „volle“
+    Startzeiten und „1 von 2 frei“ (die Vorschläge enthalten nur
+    buchbare Startzeiten), nur ein Tag statt bis zu 31, ein einziger
+    Konflikttext für zwei verschiedene 409-Fälle, Duplikate als Fehler
+    statt als übersprungen, eine fest verdrahtete Zeitzone. Der
+    Entwickler entschied, die API unverändert zu lassen und nur
+    buchbare Zeiten anzuzeigen; der Entwurf wurde entsprechend
+    angepasst.
+
+    Umgesetzt mit Ext-JS-Bordmitteln (Dataview mit XTemplate, Grid,
+    Panels) und einer kleinen eigenen CSS-Datei ohne externe
+    Ressourcen: Startzeiten als Kacheln nach Tag und Stunde, Meldungen
+    in der Seite je nach Statuscode (409 belegt, 409 Duplikat, 503,
+    sonstige), Zeitspalte und Details in der Zeitzone des Anbieters mit
+    UTC und Dauer, Importzähler für importiert, übersprungen und
+    abgelehnt. Die beiden 409-Fälle unterscheidet die Oberfläche am
+    Text der Servermeldung, da Status und Titel gleich sind.
+
+    Geprüft per Headless-Chromium gegen die laufende Anwendung (Profil
+    `h2`), auch mit auf America/New_York gestelltem Browser: Buchung,
+    Duplikat, „gerade belegt“ (Platz vorher über die API gefüllt),
+    Import und Details, ohne JavaScript-Fehler. Zwei Fehlschläge dabei
+    lagen am Testskript (gleiche Kundennummer, durch frühere Läufe
+    bereits volle Zeiten), nicht an der Anwendung.
+
 ## Was der Mensch beigetragen hat
 
 -   Legte Umfang und Rahmenbedingungen fest: Einbindung von Ext JS,

@@ -207,28 +207,32 @@ Die Aufgabe verlangt ein funktionierendes Frontend, keine automatisierten Fronte
 Oberfläche ist englischsprachig; Beschriftungen stehen daher unten im Original.
 
 **Die Oberfläche zeigt und erwartet Zeiten in der Zeitzone des Anbieters** (Europe/Berlin für beide Anbieter), egal in
-welcher Zeitzone der Browser läuft. Unter der Anbieterauswahl steht „Times in Europe/Berlin · Opening hours: Mon–Fri
-08:00–18:00, Sat 09:00–13:00“. Im November ist Berlin UTC+1, 09:00 auf dem Bildschirm sind also 08:00Z in API und CSV.
+welcher Zeitzone der Browser läuft. Unter der Anbieterauswahl stehen „2 appointments at a time“, „Mon–Fri
+08:00–18:00, Sat 09:00–13:00“ und „Times in Europe/Berlin“. Im November ist Berlin UTC+1, 09:00 auf dem Bildschirm sind also 08:00Z in API und CSV.
 
 | # | Funktion (Aufgabe) | Schritte | Erwartet |
 |---|---|---|---|
-| 1 | Anbieter auswählen | Tab *Book appointment*, „IT service provider“ öffnen | Müller (Kapazität 2) und Schneider (Kapazität 3) |
+| 1 | Anbieter auswählen | Tab *Book appointment*, „IT service provider“ öffnen | Müller und Schneider. Nach der Auswahl nennt „2 appointments at a time“ (Müller) bzw. „3 …“ (Schneider) die Kapazität |
 | 2 | Dienstleistung auswählen | Müller wählen, „Service“ öffnen | DIA 30 min, LAP 120 min, OSI 60 min |
 | 3 | Zeitraum eingeben | Von 2026-11-02 09:00, Bis 2026-11-02 14:00, Dienstleistung LAP | Die Felder übernehmen die Werte |
-| 4 | Vorschläge anzeigen | „Find available appointments“ | 10:45, 11:00, … 12:00. Nichts vor 10:45, weil der importierte LAP um 10:00 und DIA um 10:15 die Kapazität 2 ausschöpfen. |
-| 5 | Buchen | 10:45 wählen, Kundennummer `C-42`, „Book selected appointment“ | Bestätigung „10:45 – 12:45 (Europe/Berlin)“. Die Liste wird aktualisiert, und 10:45 ist verschwunden. |
-| 5b | Erneute Prüfung bei der Buchung | DIA 09:00–18:00 suchen. Bevor auf 09:00 *Book* geklickt wird, den Termin von außen füllen, z. B. zweimal `curl -H 'Content-Type: application/json' -d '{"customerNumber":"X","start":"2026-11-02T08:00:00Z","repairServiceId":"DIA"}' http://127.0.0.1:8080/it-services/IT-MUELLER/appointments` mit zwei Kundennummern (08:00Z = 09:00 Berlin). Dann *Book* klicken. | „Booking failed: No capacity left for DIA at 2026-11-02 09:00 (Europe/Berlin)“ (409). Der Server meldet UTC, die Oberfläche zeigt die Zeit des Anbieters. Die Liste wird ohne 09:00 aktualisiert. |
-| 6 | Termine eines Anbieters in einer Tabelle | Tab *Provider appointments*, Müller, Von/Bis 2026-11-02, Dienstleistung LAP, „Search“ | Zwei Zeilen: 10:00 10003 (IMPORTED) und 10:45 C-42 (BOOKED). Die untere Leiste zeigt „1–2 of 2“ und die Zeitzone. |
-| 7 | Details eines Termins | Eine Zeile anklicken | Der Detailbereich zeigt ID, Kunde, Start und Ende (mit Zeitzone), Anbieter, Dienstleistung und Herkunft |
+| 4 | Vorschläge anzeigen | „Find available slots“ | Kacheln 10:45, 11:00, … 12:00 unter „Monday 2 November 2026“, eine Zeile je Stunde, jede mit ihrem Ende („→ 12:45“). Nichts vor 10:45, weil der importierte LAP um 10:00 und DIA um 10:15 die Kapazität 2 ausschöpfen. Volle Zeiten werden nicht angezeigt (die API liefert nur buchbare Startzeiten). |
+| 5 | Buchen | Kachel 10:45 wählen, Kundennummer `C-42`, „Book appointment“ | Grüne Meldung „Appointment booked – Mon 2 Nov · 10:45–12:45 · LAP for customer C-42“ mit Termin-ID. Die Liste wird aktualisiert, und 10:45 ist verschwunden. |
+| 5b | Erneute Prüfung bei der Buchung | DIA 09:00–18:00 suchen. Bevor auf 09:00 *Book* geklickt wird, den Termin von außen füllen, z. B. zweimal `curl -H 'Content-Type: application/json' -d '{"customerNumber":"X","start":"2026-11-02T08:00:00Z","repairServiceId":"DIA"}' http://127.0.0.1:8080/it-services/IT-MUELLER/appointments` mit zwei Kundennummern (08:00Z = 09:00 Berlin). Dann *Book* klicken. | Meldung „This slot was just taken – Mon 2 Nov · 09:00–09:30 · DIA was booked by someone else a moment ago. Nothing was booked for you.“ (409). Die Liste wird ohne 09:00 aktualisiert. |
+| 5c | Doppelte Buchung | Eine DIA-Kachel, auf der noch zwei Plätze frei sind, mit Kundennummer `C-43` buchen, dieselbe Kachel erneut wählen und noch einmal buchen | Meldung „Already booked – This customer already has … Nothing new was booked.“ (409, gleicher Kunde, gleiche Dienstleistung, gleicher Start) |
+| 5d | Anbieter ausgelastet | Nur bei Sperr-Timeout (503) | Meldung „The provider is busy – Nothing was booked. Please try again in a moment.“ |
+| 6 | Termine eines Anbieters in einer Tabelle | Tab *Provider appointments*, Müller, Von/Bis 2026-11-02, Dienstleistung LAP, „Search“ | Spalte „Time (Europe/Berlin)“. Zwei Zeilen: 10:00–12:00 10003 (Imported) und 10:45–12:45 C-42 (Booked). Die untere Leiste zeigt „1–2 of 2“, Kapazität, Öffnungszeiten und Zeitzone. |
+| 7 | Details eines Termins | Eine Zeile anklicken | Der Detailbereich zeigt Datum und Zeit in Ortszeit und in UTC, Kunde, Dienstleistung, Dauer, Anbieter, Herkunft und ID |
 
 Die Liste ist seitenweise (100 pro Seite); bei mehr Terminen blättern die Pfeile in der unteren Leiste.
 
-Außerdem den Tab *Import CSV* prüfen: `termine/IT-Service-Mueller.csv` in Müller importiert listet abgelehnte Zeilen mit
-Zeilennummer und Grund (`UNKNOWN_SERVICE_CODE` für VIR/DAT).
+Außerdem den Tab *Import CSV* prüfen: `termine/IT-Service-Mueller.csv` in Müller importiert zeigt die Zähler „imported“,
+„duplicates skipped“ und „rejected“ und listet die nicht importierten Zeilen mit Zeilennummer und Grund („Unknown service“
+für VIR/DAT). Duplikate stehen grau als „Duplicate, skipped“ in derselben Liste, da sie übersprungen, aber kein Fehler
+sind. Ein zweiter Import derselben Datei ergibt nur Duplikate.
 
-Diese gesamte Prüfung einschließlich 5b, Paging und Import lief zuletzt per Headless-Chrome gegen die gepackte JAR, mit
-auf America/New_York gestelltem Browser (um zu belegen, dass die Zeitzone des Anbieters gilt) und ohne Fehler in der
-Browser-Konsole (siehe [`docs/ai-usage.md`](docs/ai-usage.md)).
+Buchen, 5b, 5c, Import und Details liefen zuletzt (nach der Überarbeitung der Oberfläche) per Headless-Chromium gegen
+die laufende Anwendung im Profil `h2`, mit auf America/New_York gestelltem Browser (um zu belegen, dass die Zeitzone des
+Anbieters gilt) und ohne JavaScript-Fehler in der Browser-Konsole (siehe [`docs/ai-usage.md`](docs/ai-usage.md)).
 
 ## Projektaufbau
 

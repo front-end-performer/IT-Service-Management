@@ -27,7 +27,7 @@ class FrontendTest extends IntegrationTest {
                 "/vendor/extjs-6.2.0/ext-all.js",
                 "/vendor/extjs-6.2.0/classic/theme-triton/theme-triton.js",
                 "/vendor/extjs-6.2.0/classic/theme-triton/resources/theme-triton-all.css",
-                "/app/Api.js", "/app/app.js", "/app/view/ProviderCombo.js", "/app/view/BookingPanel.js",
+                "/app/Api.js", "/app/app.js", "/app/app.css", "/app/view/ProviderCombo.js", "/app/view/BookingPanel.js",
                 "/app/view/AppointmentsPanel.js", "/app/view/ImportPanel.js"}) {
             mvc.perform(get(resource)).andExpect(status().isOk());
         }

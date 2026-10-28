@@ -62,45 +62,68 @@ Ext.define('Appointments.view.AppointmentsPanel', {
                 ]
             }],
             columns: [
-                {text: 'Start', dataIndex: 'start', width: 150, renderer: me.renderTime, scope: me},
-                {text: 'End', dataIndex: 'end', width: 150, renderer: me.renderTime, scope: me},
-                {text: 'Customer', dataIndex: 'customerNumber', width: 120},
+                {text: 'Date', dataIndex: 'start', width: 140, renderer: me.renderDate, scope: me},
+                {text: 'Time', itemId: 'timeColumn', dataIndex: 'start', width: 170, renderer: me.renderTimeRange, scope: me},
+                {text: 'Customer', dataIndex: 'customerNumber', width: 120, renderer: Ext.String.htmlEncode},
                 {text: 'Service', dataIndex: 'repairServiceName', flex: 1, renderer: function (v, m, r) {
-                    return Ext.String.htmlEncode(r.get('repairServiceId') + ' – ' + v);
+                    return '<span class="app-badge">' + Ext.String.htmlEncode(r.get('repairServiceId')) + '</span>' +
+                        Ext.String.htmlEncode(v);
                 }},
-                {text: 'Source', dataIndex: 'source', width: 100}
+                {text: 'Source', dataIndex: 'source', width: 110, renderer: me.renderSource, scope: me}
             ],
             listeners: {selectionchange: me.showDetails, scope: me}
         }, {
             region: 'east',
-            xtype: 'form',
+            xtype: 'panel',
             itemId: 'details',
             title: 'Appointment details',
-            width: 380,
+            width: 360,
             split: true,
             collapsible: true,
-            bodyPadding: 10,
-            defaults: {xtype: 'displayfield', labelWidth: 110, htmlEncode: true},
-            items: [
-                {fieldLabel: 'Appointment id', name: 'id'},
-                {fieldLabel: 'Customer', name: 'customerNumber'},
-                {fieldLabel: 'Start', name: 'start'},
-                {fieldLabel: 'End', name: 'end'},
-                {fieldLabel: 'Provider', name: 'serviceName'},
-                {fieldLabel: 'Service', name: 'repairService'},
-                {fieldLabel: 'Source', name: 'source'}
+            bodyPadding: 16,
+            scrollable: 'y',
+            html: me.NO_DETAILS,
+            tpl: [
+                '<div class="app-details">',
+                '<div class="app-details-when"><b>{day} · {time}</b><span class="app-hint">{zone} · {utc} UTC</span></div>',
+                '<dl>',
+                '<dt>Customer</dt><dd>{customerNumber:htmlEncode}</dd>',
+                '<dt>Service</dt><dd>{repairServiceId:htmlEncode} – {repairServiceName:htmlEncode}</dd>',
+                '<dt>Duration</dt><dd>{duration} min</dd>',
+                '<dt>Provider</dt><dd>{serviceName:htmlEncode}</dd>',
+                '<dt>Source</dt><dd>{source}</dd>',
+                '<dt>ID</dt><dd>{id:htmlEncode}</dd>',
+                '</dl></div>'
             ]
         }];
         me.callParent();
     },
 
-    renderTime: function (iso) {
-        return Appointments.Api.formatInZone(iso, this.down('#provider').getTimeZone());
+    NO_DETAILS: '<div class="app-hint">Select an appointment to see its details.</div>',
+
+    SOURCES: {
+        BOOKED: '<span class="app-chip app-chip-booked">Booked</span>',
+        IMPORTED: '<span class="app-chip">Imported</span>'
+    },
+
+    renderDate: function (iso) {
+        return Appointments.Api.formatDate(iso, this.down('#provider').getTimeZone());
+    },
+
+    /** "10:00–12:00" */
+    renderTimeRange: function (iso, meta, record) {
+        var Api = Appointments.Api, zone = this.down('#provider').getTimeZone();
+        return Api.formatClock(iso, zone) + '–' + Api.formatClock(record.get('end'), zone);
+    },
+
+    renderSource: function (source) {
+        return this.SOURCES[source] || Ext.String.htmlEncode(source || '');
     },
 
     onProviderChange: function (combo, providerId) {
         var me = this;
-        me.down('#zoneInfo').setText(Ext.String.htmlEncode(combo.describeSelection()));
+        me.down('#zoneInfo').setText(Ext.String.htmlEncode(combo.describeItems().join(' · ')));
+        me.down('#timeColumn').setText('Time (' + Ext.String.htmlEncode(combo.getTimeZone()) + ')');
         me.down('#service').clearValue();
         me.serviceStore.removeAll();
         if (providerId) {
@@ -136,7 +159,7 @@ Ext.define('Appointments.view.AppointmentsPanel', {
             providerId = me.down('#provider').getValue(),
             zone = me.down('#provider').getTimeZone(),
             toDay = me.down('#toDay').getValue();
-        me.down('#details').reset();
+        me.down('#details').update(me.NO_DETAILS);
         if (!providerId) {
             me.appointmentStore.removeAll();
             me.updatePaging(0);
@@ -168,22 +191,21 @@ Ext.define('Appointments.view.AppointmentsPanel', {
     },
 
     showDetails: function (grid, selection) {
-        var me = this, Api = Appointments.Api, form = me.down('#details');
+        var me = this, Api = Appointments.Api, details = me.down('#details');
         if (!selection.length) {
-            form.reset();
+            details.update(me.NO_DETAILS);
             return;
         }
         var zone = me.down('#provider').getTimeZone();
         Api.getAppointment(me.down('#provider').getValue(), selection[0].get('id')).then(function (a) {
-            form.getForm().setValues({
-                id: a.id,
-                customerNumber: a.customerNumber,
-                start: Api.formatInZone(a.start, zone) + ' (' + zone + ')',
-                end: Api.formatInZone(a.end, zone) + ' (' + zone + ')',
-                serviceName: a.serviceName + ' (' + a.serviceId + ')',
-                repairService: a.repairServiceName + ' (' + a.repairServiceId + ')',
-                source: a.source
-            });
+            details.update(Ext.apply({}, {
+                day: Api.formatDate(a.start, zone),
+                time: Api.formatClock(a.start, zone) + '–' + Api.formatClock(a.end, zone),
+                zone: Ext.String.htmlEncode(zone),
+                utc: Api.formatClock(a.start, 'UTC') + '–' + Api.formatClock(a.end, 'UTC'),
+                duration: (Date.parse(a.end) - Date.parse(a.start)) / 60000,
+                source: me.renderSource(a.source)
+            }, a)); // a's own fields are defaults; the formatted ones above win
         }).catch(function (e) {
             Api.showError('Loading details failed', e);
         });

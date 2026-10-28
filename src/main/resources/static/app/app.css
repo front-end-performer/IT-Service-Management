@@ -1,0 +1,212 @@
+/* Small additions to the Triton theme: slot tiles, chips, badges and inline banners. */
+
+.app-hint {
+    font-size: 12px;
+    color: #4a5565;
+    line-height: 1.5;
+}
+
+.app-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.app-chip {
+    font-size: 12px;
+    color: #3d4756;
+    background: #f0f3f7;
+    border-radius: 999px;
+    padding: 3px 9px;
+    white-space: nowrap;
+}
+
+.app-chip-booked {
+    background: #e7f5ec;
+    color: #1e6b3a;
+}
+
+.app-badge {
+    font-size: 12px;
+    font-weight: 600;
+    background: #eaf1fc;
+    color: #174a96;
+    border-radius: 6px;
+    padding: 2px 7px;
+    margin-right: 8px;
+}
+
+.app-badge-warn {
+    background: #fdeee6;
+    color: #9a3412;
+    margin-right: 0;
+}
+
+.app-badge-muted {
+    background: #f0f3f7;
+    color: #3d4756;
+    margin-right: 0;
+}
+
+/* Banner: success, info, warning, error. */
+.app-banner {
+    border-radius: 8px;
+    border: 1px solid;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.app-banner b {
+    display: block;
+}
+
+.app-banner-info {
+    background: #eaf1fc;
+    border-color: #c4d6f2;
+    color: #174a96;
+}
+
+.app-banner-success {
+    background: #e7f5ec;
+    border-color: #b9e0c7;
+    color: #1e6b3a;
+}
+
+.app-banner-warn,
+.app-banner-error {
+    background: #fdf1ea;
+    border-color: #f3c9b0;
+    color: #7c2d12;
+}
+
+/* Slot tiles: one row per hour, one column per quarter (:00, :15, :30, :45). */
+.slot-grid {
+    display: grid;
+    grid-template-columns: 36px repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    align-items: center;
+    padding: 16px 20px 20px;
+}
+
+.slot-day {
+    grid-column: 1 / -1;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3d4756;
+    margin-top: 8px;
+}
+
+.slot-day:first-child {
+    margin-top: 0;
+}
+
+.slot-hour {
+    grid-column: 1;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4a5565;
+}
+
+.slot {
+    min-height: 48px;
+    box-sizing: border-box;
+    border: 1px solid #d5dbe3;
+    border-radius: 8px;
+    padding: 6px 10px;
+    background: #fff;
+    color: #1b2430;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.slot-start {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.slot-end {
+    font-size: 12px;
+    color: #4a5565;
+}
+
+.slot-over {
+    border-color: #1f5fbf;
+}
+
+.slot-selected {
+    background: #1f5fbf;
+    border-color: #1f5fbf;
+    color: #fff;
+}
+
+.slot-selected .slot-end {
+    color: #fff;
+}
+
+/* Appointment details. */
+.app-details {
+    font-size: 14px;
+    color: #1b2430;
+}
+
+.app-details-when {
+    background: #f5f7fa;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+}
+
+.app-details-when b {
+    display: block;
+    font-size: 17px;
+}
+
+.app-details dl {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    row-gap: 10px;
+    margin: 0;
+}
+
+.app-details dt {
+    color: #4a5565;
+}
+
+.app-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Import summary counters. */
+.app-counters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    font-size: 14px;
+}
+
+.app-counters span::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background: #8a94a3;
+}
+
+.app-counters .ok::before {
+    background: #1e8a4c;
+}
+
+.app-counters .bad::before {
+    background: #c2410c;
+}
+
+.app-checklist {
+    margin: 4px 0 0;
+    padding-left: 18px;
+}

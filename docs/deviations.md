@@ -20,7 +20,8 @@ Die Einträge fallen in drei Gruppen:
 - **C – Auslegungen** entscheiden, was Spezifikation oder Aufgabe offenlassen. Das sind keine Abweichungen im engeren
   Sinn, sie stehen hier aber, damit die Lesart nachvollziehbar ist.
 
-**D – Abweichungen von der Aufgabe** stehen gesondert am Ende.
+**D – Abweichungen von der Aufgabe** stehen gesondert danach. **E – Bekannte Grenzen** listet am Ende, was bewusst
+nicht umgesetzt ist, damit es als Entscheidung und nicht als Versehen erkennbar ist.
 
 ## A – API-Erweiterungen (ergänzend)
 
@@ -70,3 +71,33 @@ Die Einträge fallen in drei Gruppen:
 Sonst unterscheidet sich nichts: Alle Pfade, Parameter, Feldnamen, Pflichtfelder und Statuscodes der
 Original-Spezifikation verhalten sich wie spezifiziert. Das sichern `SpecContractTest`, `SpecConformance` und die
 Abnahme-Suite.
+
+## E – Bekannte Grenzen
+
+Keine Abweichungen, sondern bewusst nicht umgesetzte Punkte. Die Aufgabe verlangt sie nicht; für einen Betrieb in
+Produktion wären sie die nächsten Schritte.
+
+### Katalog
+
+| # | Grenze | Auswirkung | Möglicher nächster Schritt | ADR |
+|---|---|---|---|---|
+| E1 | Ein aus `application.yml` entfernter Anbieter oder Dienst bleibt in der Datenbank und **buchbar** | Nach dem Neustart wird er weiter aufgelistet, vorgeschlagen, gebucht und importiert | Spalte `active`, beim Abgleich für fehlende Einträge auf `false`; `CatalogService` liefert nur aktive Einträge, bestehende Termine bleiben lesbar | [0002](adr/0002-configuration-driven-catalog.md) |
+| E2 | Gesenkte Kapazität oder verkürzte Öffnungszeiten prüfen bestehende Termine nicht erneut | Ein Zeitraum kann danach über der neuen Kapazität oder außerhalb der neuen Öffnungszeiten liegen; neue Buchungen und Importe werden dort abgelehnt | Prüfung beim Start, die betroffene künftige Zeiträume protokolliert oder den Start verweigert | [0002](adr/0002-configuration-driven-catalog.md) |
+
+### Fachliche Entscheidungen
+
+| # | Grenze | Begründung |
+|---|---|---|
+| E3 | Keine Authentifizierung und Autorisierung: Jeder kann buchen, importieren und alle Termine eines Anbieters mit Kundennummern lesen | Nicht Teil der Aufgabe. In Produktion: Kunden buchen, Mitarbeiter listen und importieren, z. B. über Spring Security mit OAuth2. |
+| E4 | Datenschutz: `GET …/appointments` zeigt Kundennummern, `import_rejection` speichert Rohzeilen unbegrenzt | Folgt aus E3. In Produktion: Zugriffsschutz und eine Aufbewahrungsfrist für Importberichte. |
+| E5 | Ein Kunde kann sich überschneidende Termine haben (z. B. DIA 10:00 und OSI 10:15, oder bei zwei Anbietern); nur das exakte Duplikat (Dienst und Start gleich) wird abgelehnt | Die Aufgabe definiert Kapazität je Anbieter, nicht je Kunde. Eine Regel je Kunde wäre eine fachliche Entscheidung. |
+| E6 | Kein Stornieren oder Verschieben | Weder Aufgabe noch Spezifikation verlangen es. Die Kapazität wird aus den Terminen berechnet, ein Storno gäbe sie also ohne weitere Änderung frei. |
+| E7 | Alle Schreibzugriffe eines Anbieters laufen nacheinander (Anbietersperre) | Gewollt, siehe [0003](adr/0003-pessimistic-provider-lock.md). Eine Buchung dauert Millisekunden, verschiedene Anbieter blockieren sich nicht, und die Sperre liegt in PostgreSQL, wirkt also auch über mehrere Instanzen. Bei Bedarf ließe sie sich je Tag oder Zeitfenster feiner schneiden. |
+| E8 | Beim Import in den falschen Anbieter werden gemeinsame Codes (DIA) mit dessen Dauer übernommen | Ohne Anbieterspalte in der Datei nicht erkennbar; die fremden Codes erscheinen im Bericht. Siehe [0005](adr/0005-csv-import-policy.md). |
+
+### Betrieb
+
+| # | Grenze | Möglicher nächster Schritt |
+|---|---|---|
+| E9 | Keine Health- und Metrik-Endpunkte | Spring Boot Actuator: Health für Load Balancer oder Kubernetes, Metriken z. B. für Wartezeiten an der Anbietersperre. |
+| E10 | Datenbankpasswort im Klartext in `application.yml` und `docker-compose.yml` | Für die lokale Entwicklung gedacht. In Produktion aus Umgebungsvariablen oder einem Secret Store. |

@@ -1,6 +1,7 @@
 /**
  * Thin wrapper around the REST API (rest-api-spec.yml). All calls return Promises; failures are
- * rejected with the RFC 9457 "detail" text so views can show it directly.
+ * rejected with the RFC 9457 "detail" text so views can show it directly, and the HTTP status in
+ * error.status so views can tell e.g. a taken slot (409) from a busy provider (503).
  *
  * The API speaks UTC. The UI shows and accepts times in the selected provider's time zone
  * (GET /it-services → timeZone), so "08:00" means 08:00 at the provider, in winter and in summer.
@@ -29,7 +30,9 @@ Ext.define('Appointments.Api', {
             return response.text().then(function (text) {
                 var json = text ? JSON.parse(text) : null;
                 if (!response.ok) {
-                    throw new Error((json && (json.detail || json.title)) || ('HTTP ' + response.status));
+                    var error = new Error((json && (json.detail || json.title)) || ('HTTP ' + response.status));
+                    error.status = response.status;
+                    throw error;
                 }
                 return {json: json, response: response};
             });
@@ -107,6 +110,17 @@ Ext.define('Appointments.Api', {
         return p.year + '-' + p.month + '-' + p.day + ' ' + p.hour + ':' + p.minute;
     },
 
+    /** "Thu 29 Oct 2026" (default) or any other Intl date format of an instant in a time zone. */
+    formatDate: function (iso, zone, options) {
+        return new Intl.DateTimeFormat('en-GB', Ext.apply({timeZone: zone},
+            options || {weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'})).format(new Date(iso));
+    },
+
+    /** "2026-11-02T08:00:00Z" in Europe/Berlin -> "09:00". */
+    formatClock: function (iso, zone) {
+        return this.formatInZone(iso, zone).substring(11);
+    },
+
     /** Offset of the zone from UTC at the given instant, in milliseconds (e.g. +3600000 for CET). */
     offsetMillis: function (instantMillis, zone) {
         var p = this.zonedParts(new Date(instantMillis), zone);
@@ -158,12 +172,23 @@ Ext.define('Appointments.Api', {
      * zone given, those are rewritten into the provider's local time like everything else on screen.
      */
     showError: function (title, error, zone) {
+        Ext.Msg.alert(title, Ext.String.htmlEncode(this.errorText(error, zone)));
+    },
+
+    /** The error's message, with UTC times rewritten into `zone` (see showError). */
+    errorText: function (error, zone) {
         var me = this, text = error.message || String(error);
         if (zone) {
             text = text.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z/g, function (iso) {
                 return me.formatInZone(iso, zone) + ' (' + zone + ')';
             });
         }
-        Ext.Msg.alert(title, Ext.String.htmlEncode(text));
+        return text;
+    },
+
+    /** Inline message box for a panel: kind is 'info', 'success', 'warn' or 'error'; text is HTML. */
+    showBanner: function (banner, kind, html) {
+        banner.setHtml('<div class="app-banner app-banner-' + kind + '">' + html + '</div>');
+        banner.show();
     }
 });

@@ -11,6 +11,7 @@ Ext.define('Appointments.view.ProviderCombo', {
     forceSelection: true,
     displayField: 'label',
     valueField: 'id',
+    emptyText: 'Select a provider',
 
     initComponent: function () {
         var me = this;
@@ -18,7 +19,7 @@ Ext.define('Appointments.view.ProviderCombo', {
         me.callParent();
         Appointments.Api.getProviders().then(function (providers) {
             me.store.loadData(providers.map(function (p) {
-                return Ext.apply({label: p.name + ' (capacity ' + p.capacity + ')'}, p);
+                return Ext.apply({label: p.name}, p);
             }));
         }).catch(function (e) {
             Appointments.Api.showError('Loading providers failed', e);
@@ -31,13 +32,23 @@ Ext.define('Appointments.view.ProviderCombo', {
         return record ? record.get('timeZone') : 'UTC';
     },
 
-    /** "Times in Europe/Berlin · Opening hours: Mon–Fri 08:00–18:00, Sat 09:00–13:00" */
-    describeSelection: function () {
+    /** ["2 appointments at a time", "Mon–Fri 08:00–18:00, Sat 09:00–13:00", "Times in Europe/Berlin"] */
+    describeItems: function () {
         var record = this.getSelection();
         if (!record) {
-            return '';
+            return [];
         }
-        return 'Times in ' + record.get('timeZone') + ' · Opening hours: ' +
-            Appointments.Api.describeOpeningHours(record.get('openingHours'));
+        return [
+            record.get('capacity') + (record.get('capacity') === 1 ? ' appointment' : ' appointments') + ' at a time',
+            Appointments.Api.describeOpeningHours(record.get('openingHours')),
+            'Times in ' + record.get('timeZone')
+        ];
+    },
+
+    /** The same facts as chips (HTML). */
+    describeChips: function () {
+        return '<div class="app-chips">' + this.describeItems().map(function (item) {
+            return '<span class="app-chip">' + Ext.String.htmlEncode(item) + '</span>';
+        }).join('') + '</div>';
     }
 });
