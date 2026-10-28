@@ -110,9 +110,9 @@ Ext.define('Appointments.Api', {
         return p.year + '-' + p.month + '-' + p.day + ' ' + p.hour + ':' + p.minute;
     },
 
-    /** "Thu 29 Oct 2026" (default) or any other Intl date format of an instant in a time zone. */
+    /** "Thu 29 Oct 2026" / "Do., 29. Okt. 2026" (default) or any other Intl date format, in the page language. */
     formatDate: function (iso, zone, options) {
-        return new Intl.DateTimeFormat('en-GB', Ext.apply({timeZone: zone},
+        return new Intl.DateTimeFormat(Appointments.i18n.locale, Ext.apply({timeZone: zone},
             options || {weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'})).format(new Date(iso));
     },
 
@@ -143,13 +143,16 @@ Ext.define('Appointments.Api', {
         return new Date(instant).toISOString();
     },
 
-    /** {MONDAY: "08:00-18:00", …} -> "Mon–Fri 08:00–18:00, Sat 09:00–13:00". */
+    /** {MONDAY: "08:00-18:00", …} -> "Mon–Fri 08:00–18:00, Sat 09:00–13:00" ("Mo.–Fr. …" in German). */
     describeOpeningHours: function (openingHours) {
         var days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
-            names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            names = days.map(function (day, i) { // 1 January 2024 was a Monday
+                return new Intl.DateTimeFormat(Appointments.i18n.locale, {weekday: 'short', timeZone: 'UTC'})
+                    .format(Date.UTC(2024, 0, 1 + i));
+            }),
             groups = [];
         if (!openingHours || Ext.Object.isEmpty(openingHours)) {
-            return 'open around the clock';
+            return Appointments.i18n.t('hours.always');
         }
         days.forEach(function (day, i) {
             var hours = openingHours[day], last = groups[groups.length - 1];

@@ -204,7 +204,13 @@ Die Zuordnung jeder Anforderung der Aufgabe und jedes bekannten Fallstricks zu i
 
 Die Aufgabe verlangt ein funktionierendes Frontend, keine automatisierten Frontend-Tests. Diese Prüfung nach
 `java -jar …` und dem Import der beiden Bestandsdateien (siehe oben) unter http://127.0.0.1:8080/ durchführen. Die
-Oberfläche ist englischsprachig; Beschriftungen stehen daher unten im Original.
+Beschriftungen stehen unten in der englischen Fassung.
+
+**Sprache:** Die Oberfläche erscheint auf Deutsch, wenn die erste bevorzugte Sprache des Browsers Deutsch ist (`de`,
+`de-DE`, …), sonst auf Englisch. Es gibt keinen Umschalter. Alle Texte stehen in `app/i18n.js`, je Schlüssel Englisch
+und Deutsch nebeneinander. Fehlermeldungen der API bleiben englisch und erscheinen unter einer übersetzten Überschrift.
+Zum Prüfen der deutschen Fassung z. B. Chromium mit `--lang=de` starten oder in Firefox Deutsch als erste Sprache
+einstellen.
 
 **Die Oberfläche zeigt und erwartet Zeiten in der Zeitzone des Anbieters** (Europe/Berlin für beide Anbieter), egal in
 welcher Zeitzone der Browser läuft. Unter der Anbieterauswahl stehen „2 appointments at a time“, „Mon–Fri

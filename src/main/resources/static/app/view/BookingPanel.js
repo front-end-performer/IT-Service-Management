@@ -7,16 +7,15 @@ Ext.define('Appointments.view.BookingPanel', {
     extend: 'Ext.panel.Panel',
     xtype: 'bookingpanel',
 
-    title: 'Book appointment',
+    title: Appointments.i18n.t('booking.title'),
     layout: {type: 'hbox', align: 'stretch'},
     bodyPadding: 16,
 
-    START_HINT: '<div class="app-hint" style="padding: 20px">Choose provider, service and time window, then search.</div>',
-    NOTHING_FOUND: '<div class="app-hint" style="padding: 20px">No free start times in this window. ' +
-        'Try a longer window or another day.</div>',
+    START_HINT: '<div class="app-hint" style="padding: 20px">' + Appointments.i18n.t('booking.startHint') + '</div>',
+    NOTHING_FOUND: '<div class="app-hint" style="padding: 20px">' + Appointments.i18n.t('booking.nothingFound') + '</div>',
 
     initComponent: function () {
-        var me = this,
+        var me = this, t = Appointments.i18n.t,
             tomorrow = Ext.Date.clearTime(Ext.Date.add(new Date(), Ext.Date.DAY, 1));
 
         me.serviceStore = Ext.create('Ext.data.Store', {fields: ['id', 'code', 'name', 'durationMinutes', 'label']});
@@ -27,7 +26,7 @@ Ext.define('Appointments.view.BookingPanel', {
         me.items = [{
             xtype: 'form',
             itemId: 'searchForm',
-            title: 'Find a slot',
+            title: t('booking.formTitle'),
             width: 380,
             margin: '0 16 0 0',
             bodyPadding: 20,
@@ -46,20 +45,20 @@ Ext.define('Appointments.view.BookingPanel', {
             }, {
                 xtype: 'combo',
                 itemId: 'service',
-                fieldLabel: 'Service',
+                fieldLabel: t('common.service'),
                 store: me.serviceStore,
                 queryMode: 'local',
                 editable: false,
                 forceSelection: true,
                 displayField: 'label',
                 valueField: 'id',
-                emptyText: 'Select a service',
+                emptyText: t('booking.serviceEmpty'),
                 allowBlank: false,
                 disabled: true,
                 listeners: {change: me.onServiceChange, scope: me}
             }, {
                 xtype: 'fieldcontainer',
-                fieldLabel: 'From',
+                fieldLabel: t('common.from'),
                 layout: 'hbox',
                 items: [
                     {xtype: 'datefield', itemId: 'fromDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1},
@@ -67,7 +66,7 @@ Ext.define('Appointments.view.BookingPanel', {
                 ]
             }, {
                 xtype: 'fieldcontainer',
-                fieldLabel: 'To',
+                fieldLabel: t('common.to'),
                 layout: 'hbox',
                 items: [
                     {xtype: 'datefield', itemId: 'toDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1},
@@ -77,11 +76,11 @@ Ext.define('Appointments.view.BookingPanel', {
                 xtype: 'component',
                 cls: 'app-hint',
                 margin: '0 0 16 0',
-                html: 'Up to 31 days. An appointment must end by the "To" time.'
+                html: Ext.String.htmlEncode(t('booking.rangeHint'))
             }, {
                 xtype: 'button',
                 itemId: 'searchButton',
-                text: 'Find available slots',
+                text: t('booking.search'),
                 iconCls: 'x-fa fa-search',
                 scale: 'medium',
                 disabled: true, // enabled once a service is selected, see onServiceChange
@@ -91,7 +90,7 @@ Ext.define('Appointments.view.BookingPanel', {
         }, {
             xtype: 'panel',
             itemId: 'slotPanel',
-            title: 'Available slots',
+            title: t('booking.slots'),
             flex: 1,
             layout: 'fit',
             dockedItems: [{
@@ -100,8 +99,7 @@ Ext.define('Appointments.view.BookingPanel', {
                 itemId: 'slotInfo',
                 cls: 'app-hint',
                 padding: '12 20 4',
-                html: 'Appointments start every 15 minutes. A time is listed only if the provider has a free place ' +
-                    'for the whole duration of the service.'
+                html: t('booking.slotInfo')
             }, {
                 xtype: 'component',
                 dock: 'top',
@@ -119,17 +117,17 @@ Ext.define('Appointments.view.BookingPanel', {
                 }, {
                     xtype: 'textfield',
                     itemId: 'customerNumber',
-                    fieldLabel: 'Customer number',
+                    fieldLabel: t('booking.customerNumber'),
                     labelWidth: 120,
                     width: 300,
                     maxLength: 64,
-                    emptyText: 'e.g. 10001',
+                    emptyText: t('booking.customerEmpty'),
                     listeners: {change: me.updateSelection, scope: me}
                 }, {
                     xtype: 'button',
                     itemId: 'bookButton',
                     ui: 'default', // the blue primary button, not the plain toolbar style
-                    text: 'Book appointment',
+                    text: t('booking.book'),
                     iconCls: 'x-fa fa-check',
                     scale: 'medium',
                     disabled: true,
@@ -147,7 +145,8 @@ Ext.define('Appointments.view.BookingPanel', {
                     '<div class="slot-grid"><tpl for=".">',
                     '<tpl if="dayHeader"><div class="slot-day">{dayHeader}</div></tpl>',
                     '<tpl if="hourLabel"><div class="slot-hour">{hourLabel}</div></tpl>',
-                    '<div class="slot" style="grid-column: {column}" aria-label="{startLabel} to {endLabel}">',
+                    '<div class="slot" style="grid-column: {column}" aria-label="' +
+                        t('booking.slotAria', '{startLabel}', '{endLabel}') + '">',
                     '<span class="slot-start">{startLabel}</span><span class="slot-end">→ {endLabel}</span>',
                     '</div>',
                     '</tpl></div>'
@@ -176,11 +175,11 @@ Ext.define('Appointments.view.BookingPanel', {
         }
         Appointments.Api.getServices(providerId).then(function (services) {
             me.serviceStore.loadData(services.map(function (s) {
-                return Ext.apply({label: s.code + ' – ' + s.name + ' (' + s.durationMinutes + ' min)'}, s);
+                return Ext.apply({label: Appointments.i18n.t('booking.serviceLabel', s.code, s.name, s.durationMinutes)}, s);
             }));
             serviceCombo.enable();
         }).catch(function (e) {
-            Appointments.Api.showError('Loading services failed', e);
+            Appointments.Api.showError(Appointments.i18n.t('booking.servicesFailed'), e);
         });
     },
 
@@ -194,7 +193,7 @@ Ext.define('Appointments.view.BookingPanel', {
     clearSlots: function () {
         this.down('#suggestions').emptyText = this.START_HINT;
         this.suggestionStore.removeAll();
-        this.down('#slotPanel').setTitle('Available slots');
+        this.down('#slotPanel').setTitle(Appointments.i18n.t('booking.slots'));
         this.down('#banner').hide();
         this.updateSelection();
     },
@@ -206,14 +205,14 @@ Ext.define('Appointments.view.BookingPanel', {
 
     /** Loads the start times for the form's values; also called after every booking attempt. */
     loadSuggestions: function () {
-        var me = this, Api = Appointments.Api;
+        var me = this, Api = Appointments.Api, t = Appointments.i18n.t;
         if (!me.down('#searchForm').isValid()) {
             return;
         }
         var zone = me.down('#provider').getTimeZone(),
             from = Api.toInstant(me.down('#fromDay').getValue(), me.down('#fromTime').getValue(), zone),
             to = Api.toInstant(me.down('#toDay').getValue(), me.down('#toTime').getValue(), zone);
-        me.setLoading('Searching…');
+        me.setLoading(t('booking.searching'));
         Api.getSuggestions(me.down('#provider').getValue(), me.down('#service').getValue(), from, to)
             .then(function (suggestions) {
                 me.showSlots(suggestions, zone);
@@ -221,7 +220,7 @@ Ext.define('Appointments.view.BookingPanel', {
             .catch(function (e) {
                 me.clearSlots();
                 Api.showBanner(me.down('#banner'), 'error',
-                    '<b>Search failed</b>' + Ext.String.htmlEncode(Api.errorText(e, zone)));
+                    '<b>' + t('booking.searchFailed') + '</b>' + Ext.String.htmlEncode(Api.errorText(e, zone)));
             })
             .finally(function () {
                 me.setLoading(false);
@@ -229,7 +228,7 @@ Ext.define('Appointments.view.BookingPanel', {
     },
 
     showSlots: function (suggestions, zone) {
-        var me = this, Api = Appointments.Api, lastDay, lastHour,
+        var me = this, Api = Appointments.Api, t = Appointments.i18n.t, lastDay, lastHour,
             service = me.down('#service').getSelection();
         me.down('#suggestions').emptyText = me.NOTHING_FOUND;
         me.suggestionStore.loadData(suggestions.map(function (s) {
@@ -247,11 +246,10 @@ Ext.define('Appointments.view.BookingPanel', {
             lastHour = p.hour;
             return tile;
         }));
-        me.down('#slotPanel').setTitle('Available slots · ' + suggestions.length +
-            (suggestions.length === 1 ? ' start time' : ' start times'));
-        me.down('#slotInfo').setHtml(Ext.String.htmlEncode('Appointments start every 15 minutes. A time is listed ' +
-            'only if the provider has a free place for the whole ' + service.get('durationMinutes') + ' min of ' +
-            service.get('name') + '.'));
+        me.down('#slotPanel').setTitle(t(suggestions.length === 1 ? 'booking.slotCount.one' : 'booking.slotCount.other',
+            suggestions.length));
+        me.down('#slotInfo').setHtml(Ext.String.htmlEncode(t('booking.slotInfoService', service.get('durationMinutes'),
+            service.get('name'))));
         me.updateSelection();
     },
 
@@ -263,30 +261,30 @@ Ext.define('Appointments.view.BookingPanel', {
     },
 
     updateSelection: function () {
-        var suggestion = this.down('#suggestions').getSelection()[0],
+        var t = Appointments.i18n.t,
+            suggestion = this.down('#suggestions').getSelection()[0],
             customer = Ext.String.trim(this.down('#customerNumber').getValue() || '');
         this.down('#selectedInfo').setHtml(suggestion
             ? '<b>' + Ext.String.htmlEncode(this.describeSlot(suggestion)) + '</b>' +
-            '<div class="app-hint">Availability is checked again when you book.</div>'
-            : '<span class="app-hint">No slot selected</span>');
+            '<div class="app-hint">' + t('booking.recheck') + '</div>'
+            : '<span class="app-hint">' + t('booking.noSlot') + '</span>');
         this.down('#bookButton').setDisabled(!suggestion || !customer);
     },
 
     book: function () {
-        var me = this, Api = Appointments.Api,
+        var me = this, Api = Appointments.Api, t = Appointments.i18n.t,
             suggestion = me.down('#suggestions').getSelection()[0],
             providerId = suggestion.get('serviceId'),
             zone = me.down('#provider').getTimeZone(),
             when = Ext.String.htmlEncode(me.describeSlot(suggestion)),
             banner = me.down('#banner');
-        me.setLoading('Booking…');
+        me.setLoading(t('booking.booking'));
         Api.book(providerId, {
             customerNumber: Ext.String.trim(me.down('#customerNumber').getValue()),
             start: suggestion.get('start'),
             repairServiceId: suggestion.get('repairServiceId')
         }).then(function (appointment) {
-            Api.showBanner(banner, 'success', Ext.String.format(
-                '<b>Appointment booked</b>{0} for customer {1}. Appointment id: {2}',
+            Api.showBanner(banner, 'success', t('booking.booked',
                 when, Ext.String.htmlEncode(appointment.customerNumber), Ext.String.htmlEncode(appointment.id)));
             me.fireEvent('appointmentbooked', providerId);
         }).catch(function (e) {
@@ -299,17 +297,17 @@ Ext.define('Appointments.view.BookingPanel', {
     },
 
     describeBookingError: function (e, when, zone) {
+        var t = Appointments.i18n.t;
         if (e.status === 409 && /already has/.test(e.message)) {
             // Both conflicts are 409; the duplicate one says "Customer … already has … at …".
-            return '<b>Already booked</b>This customer already has ' + when + '. Nothing new was booked.';
+            return t('booking.duplicate', when);
         }
         if (e.status === 409) {
-            return '<b>This slot was just taken</b>' + when + ' was booked by someone else a moment ago. ' +
-                'Nothing was booked for you. The list below is up to date, please pick another time.';
+            return t('booking.taken', when);
         }
         if (e.status === 503) {
-            return '<b>The provider is busy</b>Nothing was booked. Please try again in a moment.';
+            return t('booking.busy');
         }
-        return '<b>Booking failed</b>' + Ext.String.htmlEncode(Appointments.Api.errorText(e, zone));
+        return '<b>' + t('booking.failed') + '</b>' + Ext.String.htmlEncode(Appointments.Api.errorText(e, zone));
     }
 });

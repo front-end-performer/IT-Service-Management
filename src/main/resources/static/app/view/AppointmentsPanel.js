@@ -6,11 +6,11 @@ Ext.define('Appointments.view.AppointmentsPanel', {
     extend: 'Ext.panel.Panel',
     xtype: 'appointmentspanel',
 
-    title: 'Provider appointments',
+    title: Appointments.i18n.t('appointments.title'),
     layout: 'border',
 
     initComponent: function () {
-        var me = this;
+        var me = this, t = Appointments.i18n.t;
         me.page = 0;
         me.serviceStore = Ext.create('Ext.data.Store', {fields: ['id', 'label']});
         me.appointmentStore = Ext.create('Ext.data.Store', {
@@ -30,31 +30,31 @@ Ext.define('Appointments.view.AppointmentsPanel', {
                 itemId: 'provider',
                 listeners: {change: me.onProviderChange, scope: me}
             }, {
-                xtype: 'datefield', itemId: 'fromDay', fieldLabel: 'From', labelWidth: 40, width: 165, format: 'Y-m-d'
+                xtype: 'datefield', itemId: 'fromDay', fieldLabel: t('common.from'), labelWidth: 40, width: 165, format: 'Y-m-d'
             }, {
-                xtype: 'datefield', itemId: 'toDay', fieldLabel: 'To', labelWidth: 25, width: 150, format: 'Y-m-d'
+                xtype: 'datefield', itemId: 'toDay', fieldLabel: t('common.to'), labelWidth: 30, width: 155, format: 'Y-m-d'
             }, {
-                xtype: 'combo', itemId: 'service', fieldLabel: 'Service', labelWidth: 50, width: 260,
+                xtype: 'combo', itemId: 'service', fieldLabel: t('common.service'), labelWidth: 100, width: 310,
                 store: me.serviceStore, queryMode: 'local', editable: false, displayField: 'label', valueField: 'id',
-                emptyText: 'all services'
+                emptyText: t('appointments.allServices')
             }, {
-                xtype: 'button', text: 'Search', iconCls: 'x-fa fa-filter', handler: me.search, scope: me
+                xtype: 'button', text: t('appointments.search'), iconCls: 'x-fa fa-filter', handler: me.search, scope: me
             }, {
-                xtype: 'button', text: 'Reset', handler: me.resetFilters, scope: me
+                xtype: 'button', text: t('appointments.reset'), handler: me.resetFilters, scope: me
             }]
         }, {
             region: 'center',
             xtype: 'grid',
             itemId: 'grid',
             store: me.appointmentStore,
-            emptyText: 'No appointments.',
+            emptyText: t('appointments.empty'),
             dockedItems: [{
                 xtype: 'toolbar',
                 dock: 'bottom',
                 items: [
-                    {itemId: 'prevPage', iconCls: 'x-fa fa-chevron-left', tooltip: 'Previous page', disabled: true,
+                    {itemId: 'prevPage', iconCls: 'x-fa fa-chevron-left', tooltip: t('appointments.prevPage'), disabled: true,
                         handler: function () { me.goToPage(me.page - 1); }},
-                    {itemId: 'nextPage', iconCls: 'x-fa fa-chevron-right', tooltip: 'Next page', disabled: true,
+                    {itemId: 'nextPage', iconCls: 'x-fa fa-chevron-right', tooltip: t('appointments.nextPage'), disabled: true,
                         handler: function () { me.goToPage(me.page + 1); }},
                     {xtype: 'tbtext', itemId: 'pageInfo', text: ''},
                     '->',
@@ -62,21 +62,21 @@ Ext.define('Appointments.view.AppointmentsPanel', {
                 ]
             }],
             columns: [
-                {text: 'Date', dataIndex: 'start', width: 140, renderer: me.renderDate, scope: me},
-                {text: 'Time', itemId: 'timeColumn', dataIndex: 'start', width: 170, renderer: me.renderTimeRange, scope: me},
-                {text: 'Customer', dataIndex: 'customerNumber', width: 120, renderer: Ext.String.htmlEncode},
-                {text: 'Service', dataIndex: 'repairServiceName', flex: 1, renderer: function (v, m, r) {
+                {text: t('appointments.date'), dataIndex: 'start', width: 140, renderer: me.renderDate, scope: me},
+                {text: t('appointments.time'), itemId: 'timeColumn', dataIndex: 'start', width: 170, renderer: me.renderTimeRange, scope: me},
+                {text: t('common.customer'), dataIndex: 'customerNumber', width: 120, renderer: Ext.String.htmlEncode},
+                {text: t('common.service'), dataIndex: 'repairServiceName', flex: 1, renderer: function (v, m, r) {
                     return '<span class="app-badge">' + Ext.String.htmlEncode(r.get('repairServiceId')) + '</span>' +
                         Ext.String.htmlEncode(v);
                 }},
-                {text: 'Source', dataIndex: 'source', width: 110, renderer: me.renderSource, scope: me}
+                {text: t('appointments.source'), dataIndex: 'source', width: 110, renderer: me.renderSource, scope: me}
             ],
             listeners: {selectionchange: me.showDetails, scope: me}
         }, {
             region: 'east',
             xtype: 'panel',
             itemId: 'details',
-            title: 'Appointment details',
+            title: t('appointments.details'),
             width: 360,
             split: true,
             collapsible: true,
@@ -87,11 +87,11 @@ Ext.define('Appointments.view.AppointmentsPanel', {
                 '<div class="app-details">',
                 '<div class="app-details-when"><b>{day} · {time}</b><span class="app-hint">{zone} · {utc} UTC</span></div>',
                 '<dl>',
-                '<dt>Customer</dt><dd>{customerNumber:htmlEncode}</dd>',
-                '<dt>Service</dt><dd>{repairServiceId:htmlEncode} – {repairServiceName:htmlEncode}</dd>',
-                '<dt>Duration</dt><dd>{duration} min</dd>',
-                '<dt>Provider</dt><dd>{serviceName:htmlEncode}</dd>',
-                '<dt>Source</dt><dd>{source}</dd>',
+                '<dt>' + t('common.customer') + '</dt><dd>{customerNumber:htmlEncode}</dd>',
+                '<dt>' + t('common.service') + '</dt><dd>{repairServiceId:htmlEncode} – {repairServiceName:htmlEncode}</dd>',
+                '<dt>' + t('appointments.duration') + '</dt><dd>{duration} min</dd>',
+                '<dt>' + t('appointments.provider') + '</dt><dd>{serviceName:htmlEncode}</dd>',
+                '<dt>' + t('appointments.source') + '</dt><dd>{source}</dd>',
                 '<dt>ID</dt><dd>{id:htmlEncode}</dd>',
                 '</dl></div>'
             ]
@@ -99,11 +99,11 @@ Ext.define('Appointments.view.AppointmentsPanel', {
         me.callParent();
     },
 
-    NO_DETAILS: '<div class="app-hint">Select an appointment to see its details.</div>',
+    NO_DETAILS: '<div class="app-hint">' + Appointments.i18n.t('appointments.noDetails') + '</div>',
 
     SOURCES: {
-        BOOKED: '<span class="app-chip app-chip-booked">Booked</span>',
-        IMPORTED: '<span class="app-chip">Imported</span>'
+        BOOKED: '<span class="app-chip app-chip-booked">' + Appointments.i18n.t('appointments.booked') + '</span>',
+        IMPORTED: '<span class="app-chip">' + Appointments.i18n.t('appointments.imported') + '</span>'
     },
 
     renderDate: function (iso) {
@@ -123,7 +123,7 @@ Ext.define('Appointments.view.AppointmentsPanel', {
     onProviderChange: function (combo, providerId) {
         var me = this;
         me.down('#zoneInfo').setText(Ext.String.htmlEncode(combo.describeItems().join(' · ')));
-        me.down('#timeColumn').setText('Time (' + Ext.String.htmlEncode(combo.getTimeZone()) + ')');
+        me.down('#timeColumn').setText(Appointments.i18n.t('appointments.timeIn', Ext.String.htmlEncode(combo.getTimeZone())));
         me.down('#service').clearValue();
         me.serviceStore.removeAll();
         if (providerId) {
@@ -175,7 +175,7 @@ Ext.define('Appointments.view.AppointmentsPanel', {
             me.appointmentStore.loadData(result.items);
             me.updatePaging(result.total);
         }).catch(function (e) {
-            Api.showError('Loading appointments failed', e);
+            Api.showError(Appointments.i18n.t('appointments.loadFailed'), e);
         }).finally(function () {
             me.setLoading(false);
         });
@@ -185,7 +185,7 @@ Ext.define('Appointments.view.AppointmentsPanel', {
         var size = Appointments.Api.PAGE_SIZE,
             first = total ? this.page * size + 1 : 0,
             last = Math.min((this.page + 1) * size, total);
-        this.down('#pageInfo').setText(total ? first + '–' + last + ' of ' + total : '');
+        this.down('#pageInfo').setText(total ? Appointments.i18n.t('appointments.page', first, last, total) : '');
         this.down('#prevPage').setDisabled(this.page === 0);
         this.down('#nextPage').setDisabled(last >= total);
     },
@@ -207,7 +207,7 @@ Ext.define('Appointments.view.AppointmentsPanel', {
                 source: me.renderSource(a.source)
             }, a)); // a's own fields are defaults; the formatted ones above win
         }).catch(function (e) {
-            Api.showError('Loading details failed', e);
+            Api.showError(Appointments.i18n.t('appointments.detailsFailed'), e);
         });
     }
 });

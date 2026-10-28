@@ -3,7 +3,7 @@ Ext.define('Appointments.view.ProviderCombo', {
     extend: 'Ext.form.field.ComboBox',
     xtype: 'providercombo',
 
-    fieldLabel: 'IT service provider',
+    fieldLabel: Appointments.i18n.t('provider.label'),
     labelWidth: 140,
     width: 480,
     queryMode: 'local',
@@ -11,7 +11,7 @@ Ext.define('Appointments.view.ProviderCombo', {
     forceSelection: true,
     displayField: 'label',
     valueField: 'id',
-    emptyText: 'Select a provider',
+    emptyText: Appointments.i18n.t('provider.empty'),
 
     initComponent: function () {
         var me = this;
@@ -22,7 +22,7 @@ Ext.define('Appointments.view.ProviderCombo', {
                 return Ext.apply({label: p.name}, p);
             }));
         }).catch(function (e) {
-            Appointments.Api.showError('Loading providers failed', e);
+            Appointments.Api.showError(Appointments.i18n.t('provider.loadFailed'), e);
         });
     },
 
@@ -34,14 +34,14 @@ Ext.define('Appointments.view.ProviderCombo', {
 
     /** ["2 appointments at a time", "Mon–Fri 08:00–18:00, Sat 09:00–13:00", "Times in Europe/Berlin"] */
     describeItems: function () {
-        var record = this.getSelection();
+        var t = Appointments.i18n.t, record = this.getSelection();
         if (!record) {
             return [];
         }
         return [
-            record.get('capacity') + (record.get('capacity') === 1 ? ' appointment' : ' appointments') + ' at a time',
+            t(record.get('capacity') === 1 ? 'provider.capacity.one' : 'provider.capacity.other', record.get('capacity')),
             Appointments.Api.describeOpeningHours(record.get('openingHours')),
-            'Times in ' + record.get('timeZone')
+            t('provider.zone', record.get('timeZone'))
         ];
     },
 

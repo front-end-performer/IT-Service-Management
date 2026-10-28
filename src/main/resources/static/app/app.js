@@ -2,11 +2,12 @@ Ext.application({
     name: 'Appointments',
 
     launch: function () {
+        document.title = Appointments.i18n.t('app.title');
         var viewport = Ext.create('Ext.container.Viewport', {
             layout: 'fit',
             items: [{
                 xtype: 'tabpanel',
-                title: 'IT Service Appointments',
+                title: Appointments.i18n.t('app.title'),
                 items: [
                     {xtype: 'bookingpanel'},
                     {xtype: 'appointmentspanel'},
