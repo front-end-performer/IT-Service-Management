@@ -9,10 +9,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Base for tests against a real PostgreSQL (Testcontainers). The catalog from application.yml
  * is loaded once; appointments and imports are wiped before every test. "Now" is fixed, see
- * {@link FixedClockConfiguration}.
+ * {@link FixedClockConfiguration}. Every MockMvc response is checked against the spec ({@link SpecConformance}).
  */
 @SpringBootTest
-@Import({TestcontainersConfiguration.class, FixedClockConfiguration.class})
+@Import({TestcontainersConfiguration.class, FixedClockConfiguration.class, SpecConformance.class})
 public abstract class IntegrationTest {
 
     @Autowired
