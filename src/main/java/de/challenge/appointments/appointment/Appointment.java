@@ -100,12 +100,4 @@ public class Appointment {
     public AppointmentSource getSource() {
         return source;
     }
-
-    public String getImportBatchId() {
-        return importBatchId;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
 }

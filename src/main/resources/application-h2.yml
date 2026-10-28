@@ -7,6 +7,3 @@ spring:
     hikari:
       # H2's default lock timeout is ~2 s while PostgreSQL waits forever; use the same explicit value on both.
       connection-init-sql: SET LOCK_TIMEOUT ${appointments.lock-timeout-ms}
-  h2:
-    console:
-      enabled: true
