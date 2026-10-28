@@ -1,0 +1,13 @@
+version: '2'
+
+services:
+  db:
+    # Deviation: postgres:11 is end-of-life (Nov 2023); see docs/adr/0001-technology-stack.md
+    image: postgres:17-alpine
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      - "POSTGRES_DB=icares"
+      - "POSTGRES_USER=icares"
+      - "POSTGRES_PASSWORD=icares"
+      - "PGDATA=/var/lib/postgresql/data/icares"

@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: appointments
+  datasource:
+    url: jdbc:postgresql://localhost:5432/icares
+    username: icares
+    password: icares
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+server:
+  address: 127.0.0.1
+  port: 8080
+
+# Provider and service catalog. Synchronised into the database on startup;
+# a new provider or service is added here without touching Java code.
+catalog:
+  providers:
+    - id: IT-MUELLER
+      name: IT-Service Müller
+      capacity: 2
+      services:
+        - code: DIA
+          name: PC-Diagnose
+          duration-minutes: 30
+        - code: LAP
+          name: Laptop-Service
+          duration-minutes: 120
+        - code: OSI
+          name: Betriebssystem-Installation
+          duration-minutes: 60
+    - id: CS-SCHNEIDER
+      name: Computer-Service Schneider
+      capacity: 3
+      services:
+        - code: DIA
+          name: PC-Diagnose
+          duration-minutes: 15
+        - code: VIR
+          name: Virenentfernung
+          duration-minutes: 60
+        - code: DAT
+          name: Datenrettung
+          duration-minutes: 180
