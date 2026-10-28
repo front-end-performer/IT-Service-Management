@@ -28,6 +28,10 @@ tags:
     description: Kundentermine
   - name: appointment-suggestions
     description: Verfügbare Terminvorschläge
+  - name: appointment-imports
+    description: >
+      CSV-Import von Bestandsterminen aus dem Altsystem.
+      Erweiterung gegenüber der ursprünglichen Spezifikation (siehe docs/adr/0006-api-deviations.md).
 
 paths:
   /it-services:
@@ -115,6 +119,10 @@ paths:
             type: array
             items:
               $ref: '#/definitions/appointment'
+        '400':
+          description: Ungültiger Zeitraum (from nach to oder kein ISO-8601-Datum)
+          schema:
+            $ref: '#/definitions/problem'
         '404':
           description: IT-Service-Anbieter nicht gefunden
 
@@ -210,6 +218,78 @@ paths:
           description: Ungültiger Suchzeitraum
         '404':
           description: IT-Service-Anbieter oder Dienstleistung nicht gefunden
+
+  /it-services/{serviceId}/appointment-imports:
+    post:
+      tags:
+        - appointment-imports
+      summary: Bestandstermine aus CSV importieren
+      description: >
+        Importiert eine CSV-Datei (KdnNr,APP_DATE,SERVICE) für genau den Anbieter aus dem Pfad.
+        Jede Zeile wird wie eine Buchung geprüft (Leistungscode, 15-Minuten-Raster, Kapazität).
+        Gültige Zeilen werden importiert, ungültige mit Zeilennummer und Grund protokolliert.
+        Bereits importierte Termine werden als Duplikat übersprungen.
+      operationId: importAppointments
+      consumes:
+        - multipart/form-data
+      parameters:
+        - $ref: '#/parameters/serviceId'
+        - name: file
+          in: formData
+          description: CSV-Datei
+          required: true
+          type: file
+      responses:
+        '201':
+          description: Import durchgeführt, Bericht im Body
+          headers:
+            Location:
+              type: string
+              description: URL des Importberichts
+          schema:
+            $ref: '#/definitions/importReport'
+        '400':
+          description: Datei leer, falscher Header oder nicht lesbar
+          schema:
+            $ref: '#/definitions/problem'
+        '404':
+          description: IT-Service-Anbieter nicht gefunden
+    get:
+      tags:
+        - appointment-imports
+      summary: Importe eines Anbieters auflisten (ohne Zeilendetails)
+      operationId: getImports
+      parameters:
+        - $ref: '#/parameters/serviceId'
+      responses:
+        '200':
+          description: Importberichte, neueste zuerst
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/importReport'
+        '404':
+          description: IT-Service-Anbieter nicht gefunden
+
+  /it-services/{serviceId}/appointment-imports/{importId}:
+    get:
+      tags:
+        - appointment-imports
+      summary: Importbericht inklusive abgelehnter Zeilen
+      operationId: getImport
+      parameters:
+        - $ref: '#/parameters/serviceId'
+        - name: importId
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Importbericht
+          schema:
+            $ref: '#/definitions/importReport'
+        '404':
+          description: Import nicht gefunden
 
 parameters:
   serviceId:
@@ -313,6 +393,11 @@ definitions:
         type: string
         description: Bezeichnung der gebuchten Dienstleistung
         example: PC-Diagnose
+      source:
+        type: string
+        enum: [BOOKED, IMPORTED]
+        description: Herkunft des Termins (Erweiterung)
+        example: BOOKED
 
   appointmentRequest:
     type: object
@@ -361,3 +446,73 @@ definitions:
         type: string
         description: Kennung der Dienstleistung
         example: DIA
+
+  importReport:
+    type: object
+    required: [id, serviceId, importedAt, totalRows, imported, duplicates, rejected]
+    properties:
+      id:
+        type: string
+        description: Kennung des Imports
+      serviceId:
+        type: string
+        description: Kennung des IT-Service-Anbieters
+        example: IT-MUELLER
+      fileName:
+        type: string
+        example: termine.csv
+      importedAt:
+        type: string
+        format: date-time
+      totalRows:
+        type: integer
+        description: Anzahl Datenzeilen (ohne Header)
+      imported:
+        type: integer
+      duplicates:
+        type: integer
+        description: Bereits vorhandene Termine, übersprungen
+      rejected:
+        type: integer
+        description: Fehlerhafte Zeilen
+      rejections:
+        type: array
+        description: Nicht importierte Zeilen (nur im Einzelabruf und direkt nach dem Import)
+        items:
+          $ref: '#/definitions/importRejection'
+
+  importRejection:
+    type: object
+    required: [lineNumber, reason, message]
+    properties:
+      lineNumber:
+        type: integer
+        description: Zeilennummer in der Datei (Header = 1)
+        example: 4
+      rawLine:
+        type: string
+        example: 10003,2026-11-02T09:00Z,LAP
+      reason:
+        type: string
+        enum: [MALFORMED_ROW, MISSING_FIELD, INVALID_DATE, OFF_GRID, UNKNOWN_SERVICE_CODE, CAPACITY_EXCEEDED, DUPLICATE]
+      message:
+        type: string
+        example: Service code 'LAP' is not offered by CS-SCHNEIDER (offered DAT, DIA, VIR)
+
+  problem:
+    type: object
+    description: Fehlerantwort nach RFC 9457 (application/problem+json) – Erweiterung
+    properties:
+      type:
+        type: string
+      title:
+        type: string
+        example: Appointment not available
+      status:
+        type: integer
+        example: 409
+      detail:
+        type: string
+        example: No capacity left for LAP at 2026-11-02T09:00:00Z
+      instance:
+        type: string
