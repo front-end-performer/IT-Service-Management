@@ -88,6 +88,20 @@ with a human developer making the decisions and reviewing the results.
     script was fixed and the check rerun. The review also found a README step that could not be reproduced as
     written; it was rewritten as step 5b.
 
+11. **Fixes after the evaluation review.** The developer asked to fix three of the weak spots found, to explain
+    two, then to fix one of those as well:
+    - **Local time:** the UI now works in the provider's time zone. The API exposes `timeZone` and `openingHours`.
+      The JS conversion was checked in Node across both 2026/27 DST switches, then in headless Chrome with the browser
+      deliberately set to America/New_York.
+    - **Chunked import:** the import now runs in chunks, so bookings are not blocked. While testing, an expected
+      count of 1600 came out as 1598. That was correct behaviour: the test's own booking overlapped imported rows,
+      and two rows were rejected for capacity. The test was fixed, and it was confirmed to fail without chunking.
+    - **Paging:** the appointment list is paged with `X-Total-Count`.
+    - **`CatalogService`:** all provider and service lookups now go through one service. Previously the same "not
+      found" check existed in five places.
+    - The Ext JS version was explained (license implication) but deliberately left unchanged, at the developer's
+      request.
+
 ## What the human did
 
 - Set the scope and constraints: Ext JS sourcing, opening hours (first none, later required), build tool and database.

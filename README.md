@@ -88,11 +88,15 @@ curl "$H/it-services/IT-MUELLER/appointments?from=2026-11-02T00:00:00Z&to=2026-1
 curl $H/it-services/IT-MUELLER/appointments/{appointmentId}
 ```
 
+The appointment list is paged with the optional `page` (from 0) and `size` (default 100, at most 500) parameters. The
+body stays the array from the spec, and `X-Total-Count` carries the total.
+
 Errors are returned as RFC 9457 problem details: `400` for invalid input or an off-grid start, `404` for an unknown
 provider, service or appointment, and `409` when there is no capacity left or the booking is a duplicate.
 
 All times are UTC `Instant`s. Inputs may carry any offset and may omit seconds (`2026-11-02T10:00+01:00`,
-`2026-11-02T08:00Z`). Outputs are always `…Z`. The UI shows and accepts UTC as well. Note that 08:00Z in November
+`2026-11-02T08:00Z`). Outputs are always `…Z`. The UI converts to and from the provider's time zone, which the API
+exposes per provider (`timeZone`, `openingHours`). Note that 08:00Z in November
 is 09:00 in Germany (CET).
 
 ## Scheduling rules
@@ -138,7 +142,7 @@ catalog:
 ## Tests
 
 ```bash
-./mvnw test     # 143 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
+./mvnw test     # 147 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
 ```
 
 The **acceptance suite** (`acceptance/`, 55 tests) follows the task text scenario by scenario (C1–C13, G, E, S, B, K,
@@ -168,31 +172,37 @@ The mapping of every task requirement and known pitfall to its test is in
 ## Manual frontend check
 
 The task requires a working frontend, not automated frontend tests. Run this check after `java -jar …` and
-importing the two legacy files as shown above, at http://127.0.0.1:8080/. All times in the UI are UTC.
+importing the two legacy files as shown above, at http://127.0.0.1:8080/.
+
+**The UI shows and accepts times in the provider's time zone** (Europe/Berlin for both providers), whatever zone the
+browser is in. Below the provider selection the UI shows "Times in Europe/Berlin · Opening hours: Mon–Fri 08:00–18:00,
+Sat 09:00–13:00". In November, Berlin is UTC+1, so 09:00 on screen is 08:00Z in the API and the CSV.
 
 | # | Function (task) | Steps | Expected |
 |---|---|---|---|
 | 1 | Select a provider | *Book appointment* tab, open "IT service provider" | Müller (capacity 2) and Schneider (capacity 3) |
 | 2 | Select a service | Choose Müller, open "Service" | DIA 30 min, LAP 120 min, OSI 60 min |
-| 3 | Enter a period | From 2026-11-02 08:00, To 2026-11-02 13:00, service LAP | Fields accept the values |
-| 4 | Show suggestions | "Find available appointments" | 09:45, 10:00, … 11:00. Nothing before 09:45, because the imported LAP 09:00 and DIA 09:15 fill capacity 2. |
-| 5 | Book | Select 09:45, customer number `C-42`, "Book selected appointment" | Confirmation with end 11:45. The list refreshes, and 09:45 is gone. |
-| 5b | Re-check on booking | Search DIA 08:00–17:00. Before clicking *Book* on 08:00, fill that slot from outside, e.g. twice `curl -H 'Content-Type: application/json' -d '{"customerNumber":"X","start":"2026-11-02T08:00:00Z","repairServiceId":"DIA"}' http://127.0.0.1:8080/it-services/IT-MUELLER/appointments` with two customer numbers. Then click *Book*. | "Booking failed: No capacity left for DIA at 2026-11-02T08:00:00Z" (409). The list refreshes without 08:00. |
-| 6 | Provider's appointments in a table | *Provider appointments* tab, Müller, From/To 2026-11-02, service LAP, "Search" | Two rows: 10003 (IMPORTED) and C-42 (BOOKED) |
-| 7 | Details of an appointment | Click a row | The details panel shows id, customer, start, end, provider, service and source |
+| 3 | Enter a period | From 2026-11-02 09:00, To 2026-11-02 14:00, service LAP | Fields accept the values |
+| 4 | Show suggestions | "Find available appointments" | 10:45, 11:00, … 12:00. Nothing before 10:45, because the imported LAP 10:00 and DIA 10:15 fill capacity 2. |
+| 5 | Book | Select 10:45, customer number `C-42`, "Book selected appointment" | Confirmation "10:45 – 12:45 (Europe/Berlin)". The list refreshes, and 10:45 is gone. |
+| 5b | Re-check on booking | Search DIA 09:00–18:00. Before clicking *Book* on 09:00, fill that slot from outside, e.g. twice `curl -H 'Content-Type: application/json' -d '{"customerNumber":"X","start":"2026-11-02T08:00:00Z","repairServiceId":"DIA"}' http://127.0.0.1:8080/it-services/IT-MUELLER/appointments` with two customer numbers (08:00Z = 09:00 Berlin). Then click *Book*. | "Booking failed: No capacity left for DIA at 2026-11-02T08:00:00Z" (409). The list refreshes without 09:00. |
+| 6 | Provider's appointments in a table | *Provider appointments* tab, Müller, From/To 2026-11-02, service LAP, "Search" | Two rows: 10:00 10003 (IMPORTED) and 10:45 C-42 (BOOKED). The bottom toolbar shows "1–2 of 2" and the time zone. |
+| 7 | Details of an appointment | Click a row | The details panel shows id, customer, start and end (with the zone), provider, service and source |
+
+The list is paged (100 per page); with more appointments, the arrows in the bottom toolbar page through them.
 
 Also check the *Import CSV* tab: importing `termine/IT-Service-Mueller.csv` into Müller lists rejected rows with line
 number and reason (`UNKNOWN_SERVICE_CODE` for VIR/DAT).
 
-This whole check, including 5b and the import, was last run via headless Chrome against the packaged JAR with no
-browser console errors (see [`docs/ai-usage.md`](docs/ai-usage.md)).
+This whole check, including 5b, paging and the import, was last run via headless Chrome against the packaged JAR,
+with the browser set to America/New_York to prove the provider's zone is used, and with no browser console errors (see [`docs/ai-usage.md`](docs/ai-usage.md)).
 
 ## Project layout
 
 ```
 src/main/java/de/challenge/appointments/
   scheduling/   pure domain: TimeSlot, TimeGrid, CapacityCalculator, SlotFinder (no Spring, no DB)
-  catalog/      providers and services, YAML config, startup sync
+  catalog/      providers and services, YAML config, startup sync, CatalogService (all lookups and the provider lock)
   appointment/  Appointment entity, AppointmentScheduler (single write path), booking/suggestion/query services
   imports/      CSV parser, import batches, rejection reasons
   api/          REST controllers, DTOs, RFC 9457 error mapping

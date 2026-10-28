@@ -67,5 +67,6 @@ checklist of common pitfalls made them a requirement, so they were added as a do
 - One period per day means a lunch break needs a list of periods per day. The `OpeningHours` type and the table would
   carry this with a small change.
 - Public holidays are not modelled. They would be a list of closed dates per provider.
-- The API does not expose the hours (the spec has no field for them). Error messages name them, e.g. "outside the
-  opening hours of IT-MUELLER ({MONDAY=08:00-18:00, …} Europe/Berlin)".
+- The API exposes the hours as an addition to the provider (`timeZone`, `openingHours`; ADR 0006). The UI shows them
+  and works in the provider's local time. Error messages also name them, e.g. "outside the opening hours of
+  IT-MUELLER ({MONDAY=08:00-18:00, …} Europe/Berlin)".

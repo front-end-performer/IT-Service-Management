@@ -44,8 +44,10 @@ The CSV dates carry a UTC offset (`2026-11-02T08:00Z`), and the API uses ISO-860
 
 ## Consequences
 
-- **Time zones:** the UI explicitly shows and accepts UTC, which matches the API and the CSV data. Note that the
-  providers are presumably German: since the switch to CET on 2026-10-25, `2026-11-02T08:00Z` is 09:00 local time.
-  Showing local time would be a pure frontend change (format with `Europe/Berlin`), because the API stays UTC.
+- **Time zones:** the API and the CSV stay UTC. The UI shows and accepts times in the **provider's** time zone, which
+  the API exposes per provider (`timeZone`). It does not use the browser's zone, because a customer abroad still books
+  in the shop's local time.
+  - Conversion uses the browser's `Intl` time-zone data, including the DST switch days. Since the switch to CET on
+    2026-10-25, `2026-11-02T08:00Z` is shown as 09:00.
 - **Opening hours** apply on top of these rules, per provider and in local time, with daylight-saving handling. See
   [ADR 0007](0007-opening-hours.md).

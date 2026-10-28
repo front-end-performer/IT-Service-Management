@@ -41,4 +41,12 @@ row wins when rows conflict. Both are therefore our decisions (below).
 - If the wrong provider is selected, the report lists the foreign service codes instead of importing them under the
   wrong provider. Shared codes such as DIA would still be imported with that provider's duration. This is unavoidable
   without a provider column in the file, and it is visible in the report.
-- One import is one transaction. A file of a few thousand rows is fine; much larger migrations would need batching.
+- **Chunked processing:** an import runs in chunks of `appointments.import-chunk-size` rows (default 100). Each chunk
+  is its own transaction under the provider lock, so a large file never blocks bookings of that provider for longer
+  than one chunk.
+  - Rows are still checked in file order with the same rules, and the results do not depend on chunk boundaries
+    (`ChunkedImportTest`).
+  - A booking that slips in between two chunks counts like any other existing appointment, so later rows may then be
+    rejected for capacity. This matches the "first come, first served" rule of bookings.
+  - If the process stops mid-import, the committed chunks stay imported and the batch counters reflect them.
+    Re-running the file is safe, because already-imported rows are reported as duplicates.

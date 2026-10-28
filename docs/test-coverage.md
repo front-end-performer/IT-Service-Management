@@ -1,6 +1,6 @@
 # Requirements → tests
 
-Run everything with `./mvnw test` (143 tests). PostgreSQL runs via Testcontainers, and one test runs on H2.
+Run everything with `./mvnw test` (147 tests). PostgreSQL runs via Testcontainers, and one test runs on H2.
 
 There are two layers of tests:
 
@@ -115,6 +115,10 @@ class name are in the class of the row above or in the obvious class (`Appointme
 | The lock is really taken (callers wait) and only per provider | `ConcurrentBookingTest.bookingAndImportWaitForTheProviderLockInsteadOfFailing`, `otherProvidersAreNotBlocked` |
 | The lock behaves the same on H2 and PostgreSQL (H2 defaults to a ~2 s timeout) | `H2ProfileTest.bookingWaitsForTheProviderLockLikeOnPostgres`, `runsTheWholeSchedulingFlowOnH2` (without the lock: 3 at capacity 2) |
 | Lock timeout gives 503 + Retry-After, not 500 | `LockTimeoutTest` |
+| A large import does not block bookings of the same provider (chunked import) | `ChunkedImportTest.largeImportDoesNotBlockBookingsOfTheSameProvider`; fails when the whole file runs in one transaction |
+| Import results are independent of chunk boundaries | `ChunkedImportTest.rulesHoldAcrossChunkBoundaries` |
+| Paged appointment list with `X-Total-Count`, invalid page/size give 400 | `AppointmentApiTest.pagesThroughAppointmentsWithTotalCount` |
+| Provider time zone and opening hours exposed for the UI | `AppointmentApiTest.exposesTimeZoneAndOpeningHoursOfEachProvider`, `SpecContractTest` |
 | Duplicate submissions and double imports in parallel | `identicalParallelRequestsCreateExactlyOneAppointment`, `parallelImportsOfTheSameFileDoNotCreateDuplicates` |
 | Peak concurrency instead of overlap count (A 08:00, B 08:30, C 09:00 under a LAP 08:00–10:00) | `AppointmentApiTest.peakConcurrencyNotOverlapCountDecides`, `CapacityCalculatorTest.sequentialShortAppointmentsCountAsOneInParallel` |
 | Half-open intervals: back-to-back appointments are not an overlap | `CapacityCalculatorTest.touchingAppointmentsDoNotOverlap`, `bookingBeyondCapacityIsAConflict` (11:00 after 09:00–11:00) |

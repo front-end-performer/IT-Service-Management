@@ -17,6 +17,8 @@ addition, and it is reflected in [`rest-api-spec.yml`](../../rest-api-spec.yml).
 | `409` also for a duplicate booking (same customer, service and start) | The spec describes 409 as "Termin nicht verfügbar". A duplicate is a variant of that. |
 | `503` + `Retry-After` on booking/import when the provider lock is not obtained within `appointments.lock-timeout-ms` | Not specified. A timeout is no statement about availability, so not 409. It is retryable, unlike a 500. See ADR 0003. |
 | `Location` header on `201` | Standard REST practice. The body is unchanged. |
+| Optional `page`/`size` on `GET …/appointments` (default 100, at most 500), total in `X-Total-Count` | The list grows with every booking and import, and an unbounded response does not scale. The body stays the plain array of the spec, so existing clients keep working. |
+| `itService.timeZone` and `itService.openingHours` | Clients need the provider's zone to show and accept local times, and the opening hours to explain why slots are missing. These are additive fields. |
 
 **Naming:** the spec calls the provider `serviceId` and the provider's service `repairServiceId`. This is kept for
 compatibility. Internally the code uses `Provider` and `ServiceOffering`, and the DTO mapping is the only place where the

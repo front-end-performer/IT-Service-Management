@@ -19,6 +19,10 @@ service code can have different durations at different providers (DIA: 30 min at
   record. `CatalogInitializer` upserts it into the database on every start: it inserts new entries and updates names,
   capacities and durations. Entries removed from the configuration are **kept**, because appointments may reference
   them.
+- **One entry point:** `CatalogService` is the only way the rest of the application reads providers and services.
+  It is used by the REST layer, booking, suggestions, queries and import.
+  - It owns the "not found" rules, so an unknown provider or service is answered identically everywhere.
+  - It also owns the locked access (`lockProvider`, `SELECT … FOR UPDATE`) that every schedule change starts with.
 - **Internal names:** the domain uses `Provider` and `ServiceOffering` (table `service_offering`). The spec names
   `it-service`/`serviceId` and `repairService`/`repairServiceId` appear only in controllers and DTOs (`api/`).
 - **Public identifiers:** the provider id is a readable key (`IT-MUELLER`, `CS-SCHNEIDER`), matching the spec
