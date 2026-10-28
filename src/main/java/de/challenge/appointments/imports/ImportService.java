@@ -20,13 +20,18 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Imports legacy appointments for exactly one provider, chosen by the caller (never derived
  * from the file name). Rows are checked in file order with the same rules as bookings; rows
  * that fail are stored with their reason, all other rows are imported.
+ *
+ * <p>Rows are processed in chunks, each in its own transaction under the provider lock, so a
+ * large file never blocks bookings of that provider for longer than one chunk.
  */
 @Service
 public class ImportService {
@@ -38,36 +43,55 @@ public class ImportService {
     private final AppointmentScheduler scheduler;
     private final ImportBatchRepository batches;
     private final Clock clock;
+    private final TransactionTemplate transactions;
+    private final int chunkSize;
 
     ImportService(ProviderRepository providers, ServiceOfferingRepository services, AppointmentScheduler scheduler,
-                  ImportBatchRepository batches, Clock clock) {
+                  ImportBatchRepository batches, Clock clock, TransactionTemplate transactions,
+                  @Value("${appointments.import-chunk-size}") int chunkSize) {
         this.providers = providers;
         this.services = services;
         this.scheduler = scheduler;
         this.batches = batches;
         this.clock = clock;
+        this.transactions = transactions;
+        this.chunkSize = chunkSize;
     }
 
-    @Transactional
     public ImportBatch importCsv(String providerId, String fileName, Reader csv) throws IOException {
-        Provider provider = providers.findByIdForUpdate(providerId)
-                .orElseThrow(() -> new NotFoundException("IT service provider '%s' not found".formatted(providerId)));
+        if (!providers.existsById(providerId)) {
+            throw new NotFoundException("IT service provider '%s' not found".formatted(providerId));
+        }
+        // File-level errors (header, structure) are raised before anything is written.
         List<Row> rows = CsvAppointmentParser.parse(csv);
+
+        // Committed first so appointments of every chunk can reference the batch.
+        String batchId = transactions.execute(status ->
+                batches.save(new ImportBatch(providerId, fileName, clock.instant())).getId());
+        for (int from = 0; from < rows.size(); from += chunkSize) {
+            List<Row> chunk = rows.subList(from, Math.min(from + chunkSize, rows.size()));
+            transactions.executeWithoutResult(status -> importChunk(providerId, batchId, chunk));
+        }
+
+        ImportBatch batch = transactions.execute(status -> batches.findByIdAndProviderId(batchId, providerId).orElseThrow());
+        log.info("Import {} into {}: {} rows, {} imported, {} duplicates, {} rejected", batch.getId(),
+                providerId, batch.getTotalRows(), batch.getImported(), batch.getDuplicates(), batch.getRejected());
+        return batch;
+    }
+
+    /** One transaction: takes the provider lock, checks and inserts the rows in file order, commits. */
+    private void importChunk(String providerId, String batchId, List<Row> chunk) {
+        Provider provider = providers.findByIdForUpdate(providerId).orElseThrow();
         Map<String, ServiceOffering> servicesByCode = services.findByProviderIdOrderByCode(provider.getId()).stream()
                 .collect(Collectors.toMap(ServiceOffering::getCode, Function.identity(), (a, b) -> a, TreeMap::new));
-
-        // Saved first so appointments can reference the batch.
-        ImportBatch batch = batches.save(new ImportBatch(provider.getId(), fileName, clock.instant()));
-        for (Row row : rows) {
+        ImportBatch batch = batches.findById(batchId).orElseThrow();
+        for (Row row : chunk) {
             switch (row) {
                 case InvalidRow invalid -> batch.recordNotImported(invalid.lineNumber(), invalid.rawLine(),
                         invalid.reason(), invalid.message());
                 case ValidRow valid -> importRow(batch, valid, servicesByCode);
             }
         }
-        log.info("Import {} into {}: {} rows, {} imported, {} duplicates, {} rejected", batch.getId(),
-                providerId, batch.getTotalRows(), batch.getImported(), batch.getDuplicates(), batch.getRejected());
-        return batch;
     }
 
     private void importRow(ImportBatch batch, ValidRow row, Map<String, ServiceOffering> servicesByCode) {

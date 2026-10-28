@@ -22,6 +22,8 @@ spring:
 appointments:
   # How long a booking/import waits for another transaction on the same provider before answering 503.
   lock-timeout-ms: 10000
+  # CSV rows per import transaction; the provider lock is released between chunks so bookings are not blocked.
+  import-chunk-size: 100
 
 server:
   address: 127.0.0.1
