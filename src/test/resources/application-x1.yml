@@ -1,0 +1,29 @@
+# Operator configuration with a third provider (used by ExtensibilityAcceptanceTest, scenario X1).
+# A list replaces the default one entirely, so the two original providers are repeated.
+catalog:
+  providers:
+    - id: IT-MUELLER
+      name: IT-Service Müller
+      capacity: 2
+      time-zone: Europe/Berlin
+      opening-hours: { MONDAY: 08:00-18:00, TUESDAY: 08:00-18:00, WEDNESDAY: 08:00-18:00, THURSDAY: 08:00-18:00, FRIDAY: 08:00-18:00, SATURDAY: 09:00-13:00 }
+      services:
+        - { code: DIA, name: PC-Diagnose, duration-minutes: 30 }
+        - { code: LAP, name: Laptop-Service, duration-minutes: 120 }
+        - { code: OSI, name: Betriebssystem-Installation, duration-minutes: 60 }
+    - id: CS-SCHNEIDER
+      name: Computer-Service Schneider
+      capacity: 3
+      time-zone: Europe/Berlin
+      opening-hours: { MONDAY: 08:00-17:00, TUESDAY: 08:00-17:00, WEDNESDAY: 08:00-17:00, THURSDAY: 08:00-17:00, FRIDAY: 08:00-17:00, SATURDAY: 10:00-14:00 }
+      services:
+        - { code: DIA, name: PC-Diagnose, duration-minutes: 15 }
+        - { code: VIR, name: Virenentfernung, duration-minutes: 60 }
+        - { code: DAT, name: Datenrettung, duration-minutes: 180 }
+    - id: PC-HILFE-WEBER
+      name: PC-Hilfe Weber
+      capacity: 1
+      time-zone: Europe/Berlin
+      opening-hours: { MONDAY: 09:00-17:00 }
+      services:
+        - { code: NET, name: Netzwerk-Einrichtung, duration-minutes: 45 }
