@@ -1,6 +1,6 @@
 # Requirements → tests
 
-Run everything with `./mvnw test` (148 tests). PostgreSQL runs via Testcontainers, and one test runs on H2.
+Run everything with `./mvnw test` (150 tests). PostgreSQL runs via Testcontainers, and one test runs on H2.
 
 There are two layers of tests:
 
@@ -100,7 +100,7 @@ class name are in the class of the row above or in the obvious class (`Appointme
 | 6. Imported appointments count for availability | `importedAppointmentsBlockSuggestionsAndBookings` |
 | Rules also apply to imports (grid, capacity) | `reportsEveryInvalidRowWithLineNumberAndReason` (OFF_GRID, CAPACITY_EXCEEDED), `importRespectsAppointmentsBookedBefore` |
 | Providers and services configurable, extensible without code changes | `CatalogExtensibilityTest` |
-| REST API complies with `rest-api-spec.yml` | `SpecContractTest` |
+| REST API complies with `rest-api-spec.yml` | `SpecContractTest` (paths, fields); `SpecConformance` checks every status code and API header of every API test response |
 | PostgreSQL **or** H2 | All integration tests on PostgreSQL; `H2ProfileTest` |
 | Ext JS frontend served by the backend | `FrontendTest`. The UI flows were verified manually in headless Chrome (see [ai-usage.md](ai-usage.md)). |
 
@@ -118,6 +118,7 @@ class name are in the class of the row above or in the obvious class (`Appointme
 | A large import does not block bookings of the same provider (chunked import) | `ChunkedImportTest.largeImportDoesNotBlockBookingsOfTheSameProvider`; fails when the whole file runs in one transaction |
 | Import results are independent of chunk boundaries | `ChunkedImportTest.rulesHoldAcrossChunkBoundaries` |
 | Opt-in paging with `X-Total-Count` (no parameters return everything), invalid page/size give 400 | `AppointmentApiTest.pagesThroughAppointmentsWithTotalCount` |
+| An aborted import is recorded as FAILED with the line where it stopped, the client gets 500 + report link, re-import is safe | `ChunkedImportTest.unexpectedFailureMarksTheImportFailedAndReimportIsSafe`; on lock timeout 503 + FAILED: `LockTimeoutTest` |
 | A too-long customer number in a CSV row rejects that row only | `ImportApiTest.rejectsATooLongCustomerNumberAsARowNotTheWholeFile` |
 | Provider time zone and opening hours exposed for the UI | `AppointmentApiTest.exposesTimeZoneAndOpeningHoursOfEachProvider`, `SpecContractTest` |
 | Duplicate submissions and double imports in parallel | `identicalParallelRequestsCreateExactlyOneAppointment`, `parallelImportsOfTheSameFileDoNotCreateDuplicates` |

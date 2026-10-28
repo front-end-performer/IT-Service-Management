@@ -9,7 +9,7 @@ original, the change, the reason, the ADR with the full rationale, and the test 
 The list of API changes was derived mechanically: the original and current `rest-api-spec.yml` were parsed and
 compared. That comparison yields **only additions**. No path, parameter, field or status code of the original spec
 was removed or changed in meaning. In the YAML, every addition is marked *"Erweiterung"*.
-`SpecContractTest` keeps the YAML and the code in sync.
+`SpecContractTest` (paths and fields) and `SpecConformance` (every status code and API header of every API test response) keep the YAML and the code in sync.
 
 Entries fall into three groups:
 - **A – API extensions** add something the spec does not have. Clients that only know the original spec are
@@ -31,6 +31,7 @@ Entries fall into three groups:
 | A5 | `GET …/appointments` returns a plain list | **Opt-in** paging: `page`, `size` (1–500), total in `X-Total-Count`. Without `page`/`size`, **all** appointments are returned, exactly as specified. | The list grows with every booking and import, so the UI must be able to page. Paging is opt-in so that a client following the original spec never silently receives a truncated list. | [0006](adr/0006-api-deviations.md) | `AppointmentApiTest.pagesThroughAppointmentsWithTotalCount` |
 | A6 | `itService` = id, name, capacity | Additional `timeZone` and `openingHours` | The UI shows and accepts times in the provider's local time and explains missing slots. Needed because of D1. | [0006](adr/0006-api-deviations.md), [0007](adr/0007-opening-hours.md) | `AppointmentApiTest.exposesTimeZoneAndOpeningHoursOfEachProvider` |
 | A7 | `appointmentRequest.customerNumber` has no length | `minLength: 1`, `maxLength: 64`, also enforced for CSV rows (`INVALID_CUSTOMER_NUMBER`) | Matches the storage column. Without the limit, a single overly long CSV value made the whole import fail with 409. Found while compiling this register, now rejected row by row. | [0005](adr/0005-csv-import-policy.md) | `rejectsBodiesWithMissingFields`, `ImportApiTest.rejectsATooLongCustomerNumberAsARowNotTheWholeFile` |
+| A8 | No import exists, so no import outcome | `importReport.status` (`RUNNING`/`COMPLETED`/`FAILED`) and `failureMessage` | An aborted import must be recognisable as such and say where it stopped; re-importing is safe. | [0005](adr/0005-csv-import-policy.md) | `ChunkedImportTest.unexpectedFailureMarksTheImportFailedAndReimportIsSafe` |
 
 ## B – Additional status codes
 
@@ -43,6 +44,7 @@ Entries fall into three groups:
 | B5 | Same customer, service and start booked twice | `409` | A variant of "Termin nicht verfügbar". Protects against double clicks and retries. | [0006](adr/0006-api-deviations.md) | `sameCustomerServiceAndStartIsADuplicate`, `identicalParallelRequestsCreateExactlyOneAppointment` |
 | B6 | Provider lock not obtained within `appointments.lock-timeout-ms` (10 s) | `503` + `Retry-After: 1` | A timeout says nothing about capacity (so not `409`), and it is retryable (so not `500`). | [0003](adr/0003-pessimistic-provider-lock.md) | `LockTimeoutTest` |
 | B7 | CSV upload larger than 5 MB | `413` problem detail | Bounded request size. Verified against the packaged JAR (MockMvc does not enforce the limit). | [0006](adr/0006-api-deviations.md) | Manual check, see [ai-usage.md](ai-usage.md) |
+| B8 | An import aborted by an unexpected error after it was recorded | `500` problem detail with `importId` and `Location` to the `FAILED` report. A lock timeout during an import gives `503` and is also recorded as `FAILED`. | The client learns that the import was aborted, where, and that re-importing is safe. Internal details stay in the server log. | [0005](adr/0005-csv-import-policy.md) | `ChunkedImportTest`, `LockTimeoutTest.importThatTimesOutIsAnsweredWith503AndRecordedAsFailed` |
 
 ## C – Interpretations of open points
 
@@ -64,4 +66,4 @@ Entries fall into three groups:
 | D3 | `docker-compose.yml` with `postgres:11-alpine`, port `5432` | `postgres:17-alpine`, port bound to `127.0.0.1` only. Database name, user and password unchanged. | PostgreSQL 11 has been end-of-life since November 2023. The database should not be reachable from the network. | [0001](adr/0001-technology-stack.md) | All integration tests run on PostgreSQL 17 |
 
 Nothing else differs: all paths, parameters, field names, required fields and status codes of the original spec
-behave as specified. This is enforced by `SpecContractTest` and the acceptance suite.
+behave as specified. This is enforced by `SpecContractTest`, `SpecConformance` and the acceptance suite.

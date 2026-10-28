@@ -23,6 +23,7 @@ The complete register of deviations, including task-level deviations, interpreta
 | **Opt-in** `page`/`size` on `GET …/appointments` (size 1–500; only `page` given means size 100), total in `X-Total-Count` | The list grows with every booking and import, so the UI must be able to page. Without `page`/`size` **all** appointments are returned, exactly as specified, so a client that knows only the original spec never silently receives a truncated list. (A first version paged by default; that was changed for this reason.) |
 | `customerNumber` limited to 1–64 characters (bookings: 400; CSV rows: `INVALID_CUSTOMER_NUMBER`) | Matches the storage column. Before the CSV check, one overly long value made a whole import fail with 409. |
 | `413` problem detail for a CSV upload over 5 MB | Bounded request size. Verified against the packaged JAR. |
+| `importReport.status` / `failureMessage`; `500` (+ `importId`, `Location`) when an import is aborted, and `503` from the import on a lock timeout | An aborted import must be recognisable as aborted, and say where it stopped and that a re-import is safe (task: "nachvollziehbar behandeln"). |
 | `itService.timeZone` and `itService.openingHours` | Clients need the provider's zone to show and accept local times, and the opening hours to explain why slots are missing. These are additive fields. |
 
 **Naming:** the spec calls the provider `serviceId` and the provider's service `repairServiceId`. This is kept for
@@ -32,10 +33,22 @@ two vocabularies meet (`api/Dtos.java`).
 **Time formats:** inputs accept seconds or no seconds, and any offset (`2026-11-02T09:00:00Z`, `2026-11-02T08:00Z`,
 `2026-11-02T10:00+01:00`). Outputs are always UTC with `Z`.
 
-**Contract check:** the YAML is the source of truth, and code is not generated from it. Instead, `SpecContractTest`
-fails the build if:
-- any implemented endpoint is missing from the spec, or vice versa, or
-- any DTO's JSON fields differ from the matching definition's properties.
+**Contract check:** the YAML is the source of truth, and code is not generated from it. Two checks keep code and YAML
+together:
+- **`SpecContractTest`** (static) fails the build if any implemented endpoint is missing from the spec or vice
+  versa, or if any DTO's JSON fields differ from the matching definition's properties.
+- **`SpecConformance`** (at runtime) checks *every* MockMvc response of *every* integration test:
+  - the operation must be documented;
+  - the status code must be declared for that operation;
+  - each API header it sends (`Location`, `X-Total-Count`, `Retry-After`) must be declared for that status.
+
+  A violation fails the test that produced the response, naming the operation and the gap. The check was
+  verified by deleting the `Location` header, the `409` and `X-Total-Count` from the YAML one at a time; it caught
+  each (18, 8 and 4 failing tests). Responses MockMvc cannot produce (`413`, which the servlet container enforces)
+  were verified against the packaged JAR.
+
+This exists because three items once slipped through (`Location` on bookings, `413`, the customer-number length):
+the static check only compares paths and field names.
 
 (springdoc would generate OpenAPI 3, while the spec is Swagger 2.0.)
 

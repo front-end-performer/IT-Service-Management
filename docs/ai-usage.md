@@ -117,6 +117,17 @@ with a human developer making the decisions and reviewing the results.
       rejected row (`INVALID_CUSTOMER_NUMBER`), test first.
     - **Undocumented behaviour:** `Location`, `413` and the length limit were missing from the YAML.
 
+13. **Senior follow-ups to the register findings.** The developer asked how a senior would fix the three findings,
+    measured against the task text. Claude separated the immediate causes from the deeper ones. The developer chose
+    two to implement:
+    - **Import status:** `RUNNING`/`COMPLETED`/`FAILED`. An aborted import now says where it stopped, and the client
+      gets 500 with a link to the report. This was tested by making the scheduler fail for one row via a spy bean.
+      A first test attempt failed because stubbing the spy passed through the scheduler's `MANDATORY` transaction
+      guard. That was a test-setup issue (the guard was working as intended), fixed by stubbing inside a
+      transaction.
+    - **Response-level spec check:** every response of every API test is checked against the YAML. It was
+      verified by deleting three spec entries one at a time; each was caught.
+
 ## What the human did
 
 - Set the scope and constraints: Ext JS sourcing, opening hours (first none, later required), build tool and database.

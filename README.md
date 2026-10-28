@@ -69,7 +69,8 @@ the same file again adds nothing: every row is reported as a `DUPLICATE`.
 
 Rejection reasons: `MALFORMED_ROW`, `MISSING_FIELD`, `INVALID_CUSTOMER_NUMBER`, `INVALID_DATE`, `OFF_GRID`, `OUTSIDE_OPENING_HOURS`,
 `UNKNOWN_SERVICE_CODE`,
-`CAPACITY_EXCEEDED`, `DUPLICATE`. Reports are stored and can be fetched again via
+`CAPACITY_EXCEEDED`, `DUPLICATE`. Each import has a status: `COMPLETED`, or `FAILED` with the line where it stopped. Re-importing an aborted file is
+safe. Reports are stored and can be fetched again via
 `GET /it-services/{id}/appointment-imports[/{importId}]`.
 
 ## API at a glance
@@ -143,7 +144,7 @@ catalog:
 ## Tests
 
 ```bash
-./mvnw test     # 148 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
+./mvnw test     # 150 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
 ```
 
 The **acceptance suite** (`acceptance/`, 55 tests) follows the task text scenario by scenario (C1–C13, G, E, S, B, K,
@@ -161,6 +162,7 @@ remaining tests cover the design's edge cases:
 | `LockTimeoutTest` | A lock timeout returns 503 + Retry-After |
 | `FrontendTest` | The Ext JS app and runtime are served from the JAR |
 | `SpecContractTest` | Implemented endpoints and DTO fields match `rest-api-spec.yml` exactly |
+| `SpecConformance` (runs inside every API test) | Every status code and API header returned in any test is declared in `rest-api-spec.yml` |
 | `ImportApiTest`, `CsvAppointmentParserTest` | Real legacy files, wrong-provider import, re-import, every rejection reason with its line number, header errors |
 
 To check that the concurrency tests actually work, I removed the lock and ran them again:

@@ -48,5 +48,18 @@ row wins when rows conflict. Both are therefore our decisions (below).
     (`ChunkedImportTest`).
   - A booking that slips in between two chunks counts like any other existing appointment, so later rows may then be
     rejected for capacity. This matches the "first come, first served" rule of bookings.
-  - If the process stops mid-import, the committed chunks stay imported and the batch counters reflect them.
-    Re-running the file is safe, because already-imported rows are reported as duplicates.
+  - **Import status:** every import record has a status: `RUNNING` while chunks are processed, then `COMPLETED`
+    (every row processed) or `FAILED` (Flyway `V3`).
+  - **On an unexpected error in a chunk** (e.g. a database error):
+    - only that chunk is rolled back;
+    - the record is marked `FAILED`, with a `failureMessage` naming the first line not processed and stating that
+      re-importing is safe;
+    - the client gets **500** with `importId` and a `Location` to the report;
+    - internal details (SQL, stack traces) are logged on the server, not returned.
+  - **On a lock timeout:** the record is also marked `FAILED`, and the client gets **503** + `Retry-After`, because
+    that case is retryable.
+  - **Why the status matters:** without it, an aborted import would look like a normal import with fewer rows,
+    which is not "nachvollziehbar". Committed chunks stay imported, and re-running the file is safe, because
+    already-imported rows are reported as duplicates.
+  - **Limit:** if the database itself is unreachable, the `FAILED` mark cannot be written either, and the record
+    stays `RUNNING`. That state is visible in the import list and the server log.
