@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import de.challenge.appointments.appointment.BookingService;
 import de.challenge.appointments.common.ConflictException;
+import de.challenge.appointments.imports.ImportBatch;
+import de.challenge.appointments.imports.ImportService;
 import de.challenge.appointments.scheduling.CapacityCalculator;
 import de.challenge.appointments.scheduling.TimeSlot;
+import java.io.StringReader;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Fires many bookings at the same time against PostgreSQL and checks that the provider lock
- * prevents overbooking.
+ * Fires many bookings and imports at the same time against PostgreSQL and checks that the
+ * provider lock prevents overbooking and duplicates.
  */
 class ConcurrentBookingTest extends IntegrationTest {
 
@@ -28,6 +31,9 @@ class ConcurrentBookingTest extends IntegrationTest {
 
     @Autowired
     private BookingService booking;
+
+    @Autowired
+    private ImportService imports;
 
     @Test
     void parallelBookingsOfTheSameSlotNeverExceedCapacity() throws Exception {
@@ -49,6 +55,48 @@ class ConcurrentBookingTest extends IntegrationTest {
         assertThat(outcome.succeeded()).isPositive();
         assertThat(outcome.succeeded() + outcome.conflicts()).isEqualTo(60);
         assertPeakConcurrencyWithinCapacity("CS-SCHNEIDER", 3);
+    }
+
+    @Test
+    void identicalParallelRequestsCreateExactlyOneAppointment() throws Exception {
+        // A double-clicked "Book" button or a client retry: same customer, service and start.
+        var outcome = runConcurrently(10, i -> () -> booking.book("CS-SCHNEIDER", "VIR", "C-1", NINE));
+
+        assertThat(outcome.succeeded()).isEqualTo(1);
+        assertThat(outcome.conflicts()).isEqualTo(9);
+    }
+
+    @Test
+    void importRacingWithBookingsNeverExceedsCapacity() throws Exception {
+        // Import and bookings target the same LAP slot at Müller (capacity 2); both take the provider lock.
+        StringBuilder csv = new StringBuilder("KdnNr,APP_DATE,SERVICE\n");
+        for (int i = 0; i < 10; i++) {
+            csv.append("IMP-").append(i).append(",2026-11-02T09:00Z,LAP\n");
+        }
+        AtomicInteger imported = new AtomicInteger();
+        var outcome = runConcurrently(11, i -> i == 0
+                ? () -> imported.addAndGet(imports.importCsv("IT-MUELLER", "race.csv", new StringReader(csv.toString()))
+                        .getImported())
+                : () -> booking.book("IT-MUELLER", "LAP", "BOOK-" + i, NINE));
+
+        assertThat(imported.get() + outcome.succeeded() - 1).as("imported + booked").isEqualTo(2);
+        assertPeakConcurrencyWithinCapacity("IT-MUELLER", 2);
+    }
+
+    @Test
+    void parallelImportsOfTheSameFileDoNotCreateDuplicates() throws Exception {
+        String csv = """
+                KdnNr,APP_DATE,SERVICE
+                1,2026-11-02T08:00Z,DIA
+                2,2026-11-02T09:00Z,VIR
+                3,2026-11-02T10:00Z,DAT
+                """;
+        List<ImportBatch> batches = java.util.Collections.synchronizedList(new ArrayList<>());
+        runConcurrently(5, i -> () -> batches.add(imports.importCsv("CS-SCHNEIDER", "same.csv", new StringReader(csv))));
+
+        assertThat(batches).extracting(ImportBatch::getImported).containsExactlyInAnyOrder(3, 0, 0, 0, 0);
+        assertThat(batches).extracting(ImportBatch::getDuplicates).containsExactlyInAnyOrder(0, 3, 3, 3, 3);
+        assertThat(jdbc.queryForObject("select count(*) from appointment", Integer.class)).isEqualTo(3);
     }
 
     private record Outcome(int succeeded, int conflicts) {
