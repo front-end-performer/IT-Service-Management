@@ -15,6 +15,7 @@ addition, and it is reflected in [`rest-api-spec.yml`](../../rest-api-spec.yml).
 | `400` for a booking outside the provider's opening hours (or past closing time); no suggestions outside them | Opening hours are a documented deviation, see [ADR 0007](0007-opening-hours.md). The request can never succeed, so 400 rather than 409. |
 | `400` for a booking start in the past | Not specified. A past slot can never be "available". |
 | `409` also for a duplicate booking (same customer, service and start) | The spec describes 409 as "Termin nicht verfügbar". A duplicate is a variant of that. |
+| `503` + `Retry-After` on booking/import when the provider lock is not obtained within `appointments.lock-timeout-ms` | Not specified. A timeout is no statement about availability, so not 409. It is retryable, unlike a 500. See ADR 0003. |
 | `Location` header on `201` | Standard REST practice. The body is unchanged. |
 
 **Naming:** the spec calls the provider `serviceId` and the provider's service `repairServiceId`. This is kept for

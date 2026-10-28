@@ -1,7 +1,7 @@
 # Requirements → tests
 
 Each requirement of the [task](task/README.de.md) and each known pitfall, with the test that proves it. Run everything
-with `./mvnw test` (83 tests). PostgreSQL runs via Testcontainers, and one test runs on H2.
+with `./mvnw test` (88 tests). PostgreSQL runs via Testcontainers, and one test runs on H2.
 
 Unless a different class is named, test methods without a class are in the class of the row above or in the obvious
 class (`AppointmentApiTest`, `ImportApiTest`, `ConcurrentBookingTest`).
@@ -34,6 +34,10 @@ class (`AppointmentApiTest`, `ImportApiTest`, `ConcurrentBookingTest`).
 | Check-then-insert race | `parallelBookingsOfTheSameSlotNeverExceedCapacity`: 20 threads give exactly 2 created. Without the lock, 10 got through. |
 | Overlapping parallel bookings with different starts and durations | `parallelOverlappingBookingsWithDifferentStartsNeverExceedCapacity` (peak load is checked in the DB) |
 | Import racing with bookings, using the same lock path | `importRacingWithBookingsNeverExceedsCapacity`: fails when the import does not lock |
+| The loser of a race gets HTTP 409, never two bookings | `AppointmentApiTest.parallelHttpRequestsGet201UntilCapacityThen409` |
+| The lock is really taken (callers wait) and only per provider | `ConcurrentBookingTest.bookingAndImportWaitForTheProviderLockInsteadOfFailing`, `otherProvidersAreNotBlocked` |
+| The lock behaves the same on H2 and PostgreSQL (H2 defaults to a ~2 s timeout) | `H2ProfileTest.bookingWaitsForTheProviderLockLikeOnPostgres`, `runsTheWholeSchedulingFlowOnH2` (without the lock: 3 at capacity 2) |
+| Lock timeout gives 503 + Retry-After, not 500 | `LockTimeoutTest` |
 | Duplicate submissions and double imports in parallel | `identicalParallelRequestsCreateExactlyOneAppointment`, `parallelImportsOfTheSameFileDoNotCreateDuplicates` |
 | Peak concurrency instead of overlap count (A 08:00, B 08:30, C 09:00 under a LAP 08:00–10:00) | `AppointmentApiTest.peakConcurrencyNotOverlapCountDecides`, `CapacityCalculatorTest.sequentialShortAppointmentsCountAsOneInParallel` |
 | Half-open intervals: back-to-back appointments are not an overlap | `CapacityCalculatorTest.touchingAppointmentsDoNotOverlap`, `bookingBeyondCapacityIsAConflict` (11:00 after 09:00–11:00) |

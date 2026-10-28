@@ -52,6 +52,16 @@ with a human developer making the decisions and reviewing the results.
    crossing of closing time or midnight. Before choosing the configured hours, Claude checked that every legacy
    appointment falls within them.
 
+8. **Concurrency parity.** Checking the concurrency checklist, Claude measured that H2 gives up waiting for a row lock
+   after about 2 s, while PostgreSQL waits indefinitely. Both now use the same explicit lock timeout, and a timeout is
+   answered with 503. New tests cover:
+   - 409 for the losers of a race at HTTP level;
+   - that bookings and imports really wait for the lock;
+   - that other providers are not blocked;
+   - the same checks on H2.
+
+   Each lock test was confirmed to fail when the lock is removed, on both databases.
+
 ## What the human did
 
 - Set the scope and constraints: Ext JS sourcing, no opening hours, build tool and database.

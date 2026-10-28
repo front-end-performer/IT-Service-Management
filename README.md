@@ -112,7 +112,9 @@ is 09:00 in Germany (CET).
 - Suggestions are every grid start in `[from, to]` whose service finishes by `to`, lies within opening hours and fits.
   The search range is limited to 31 days.
 - Overbooking under concurrent requests is prevented with a row lock on the provider during the re-check and the
-  insert. See [ADR 0003](docs/adr/0003-pessimistic-provider-lock.md).
+  insert, for both bookings and imports. The loser of a race gets 409. Waiting for the lock is capped at the same
+  `appointments.lock-timeout-ms` (10 s) on PostgreSQL and H2. If the cap is reached, the request gets 503 +
+  Retry-After. See [ADR 0003](docs/adr/0003-pessimistic-provider-lock.md).
 
 ## Adding a provider or service
 
@@ -136,7 +138,7 @@ catalog:
 ## Tests
 
 ```bash
-./mvnw test     # 83 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
+./mvnw test     # 88 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
 ```
 
 | Test | Covers |
@@ -146,7 +148,8 @@ catalog:
 | `AppointmentApiTest` | Booking (201/400/404/409), the end time per provider, past starts, times without seconds, duplicates, suggestions, filters, details |
 | `ConcurrentBookingTest` | 20 parallel bookings of one slot give exactly 2 created; overlapping parallel bookings; an import racing bookings; identical parallel requests; parallel re-imports |
 | `CatalogExtensibilityTest` | A new provider and a changed duration via configuration only; existing appointments keep their end time |
-| `H2ProfileTest` | The whole flow, including the row lock, on the H2 profile |
+| `H2ProfileTest` | The whole flow, including the row lock and waiting for it, on the H2 profile |
+| `LockTimeoutTest` | A lock timeout returns 503 + Retry-After |
 | `FrontendTest` | The Ext JS app and runtime are served from the JAR |
 | `SpecContractTest` | Implemented endpoints and DTO fields match `rest-api-spec.yml` exactly |
 | `ImportApiTest`, `CsvAppointmentParserTest` | Real legacy files, wrong-provider import, re-import, every rejection reason with its line number, header errors |
