@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import de.challenge.appointments.appointment.BookingService;
+import de.challenge.appointments.catalog.ProviderRepository;
 import de.challenge.appointments.common.ConflictException;
 import de.challenge.appointments.imports.ImportService;
 import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +25,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The alternative H2 setup ({@code --spring.profiles.active=h2}): same Flyway migrations, same
@@ -39,6 +42,21 @@ class H2ProfileTest {
     private ImportService imports;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private ProviderRepository providers;
+    @Autowired
+    private TransactionTemplate transactions;
+
+    @Test
+    void bookingWaitsForTheProviderLockLikeOnPostgres() throws Exception {
+        var released = LockProbe.holdProviderLock(transactions, providers, "CS-SCHNEIDER", Duration.ofMillis(1500));
+        long started = System.nanoTime();
+        booking.book("CS-SCHNEIDER", "DIA", "W-1", Instant.parse("2026-11-11T09:00:00Z"));
+        long waitedMillis = Duration.ofNanos(System.nanoTime() - started).toMillis();
+        released.get();
+
+        assertThat(waitedMillis).isGreaterThanOrEqualTo(1000);
+    }
 
     @Test
     void runsTheWholeSchedulingFlowOnH2() throws Exception {

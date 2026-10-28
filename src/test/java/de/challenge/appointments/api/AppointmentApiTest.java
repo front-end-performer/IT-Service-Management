@@ -1,5 +1,6 @@
 package de.challenge.appointments.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -205,6 +206,32 @@ class AppointmentApiTest extends IntegrationTest {
 
         book(SCHNEIDER, "DIA", "C-4", "2026-11-02T09:30:00Z").andExpect(status().isConflict());
         book(SCHNEIDER, "DIA", "C-4", "2026-11-02T09:45:00Z").andExpect(status().isCreated()); // DIA 09:30 ended
+    }
+
+    @Test
+    void parallelHttpRequestsGet201UntilCapacityThen409() throws Exception {
+        int requests = 12;
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var statuses = java.util.Collections.synchronizedList(new java.util.ArrayList<Integer>());
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(requests)) {
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
+            for (int i = 0; i < requests; i++) {
+                String customer = "HTTP-" + i;
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    statuses.add(book(MUELLER, "LAP", customer, "2026-11-02T09:00:00Z").andReturn().getResponse().getStatus());
+                    return null;
+                }));
+            }
+            start.countDown();
+            for (var future : futures) {
+                future.get();
+            }
+        }
+
+        assertThat(statuses).containsOnly(201, 409);
+        assertThat(statuses.stream().filter(s -> s == 201).count()).isEqualTo(2); // capacity of Müller
+        mvc.perform(get(MUELLER + "/appointments")).andExpect(jsonPath("$", hasSize(2)));
     }
 
     @Test

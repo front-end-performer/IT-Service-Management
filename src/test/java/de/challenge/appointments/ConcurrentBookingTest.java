@@ -3,12 +3,14 @@ package de.challenge.appointments;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.challenge.appointments.appointment.BookingService;
+import de.challenge.appointments.catalog.ProviderRepository;
 import de.challenge.appointments.common.ConflictException;
 import de.challenge.appointments.imports.ImportBatch;
 import de.challenge.appointments.imports.ImportService;
 import de.challenge.appointments.scheduling.CapacityCalculator;
 import de.challenge.appointments.scheduling.TimeSlot;
 import java.io.StringReader;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Fires many bookings and imports at the same time against PostgreSQL and checks that the
@@ -34,6 +37,12 @@ class ConcurrentBookingTest extends IntegrationTest {
 
     @Autowired
     private ImportService imports;
+
+    @Autowired
+    private ProviderRepository providers;
+
+    @Autowired
+    private TransactionTemplate transactions;
 
     @Test
     void parallelBookingsOfTheSameSlotNeverExceedCapacity() throws Exception {
@@ -97,6 +106,31 @@ class ConcurrentBookingTest extends IntegrationTest {
         assertThat(batches).extracting(ImportBatch::getImported).containsExactlyInAnyOrder(3, 0, 0, 0, 0);
         assertThat(batches).extracting(ImportBatch::getDuplicates).containsExactlyInAnyOrder(0, 3, 3, 3, 3);
         assertThat(jdbc.queryForObject("select count(*) from appointment", Integer.class)).isEqualTo(3);
+    }
+
+    @Test
+    void bookingAndImportWaitForTheProviderLockInsteadOfFailing() throws Exception {
+        // Proves the lock is really taken (the calls wait) and that waiting does not end in an error.
+        var released = LockProbe.holdProviderLock(transactions, providers, "IT-MUELLER", Duration.ofMillis(1500));
+        long started = System.nanoTime();
+        booking.book("IT-MUELLER", "DIA", "C-1", NINE);
+        imports.importCsv("IT-MUELLER", "wait.csv", new StringReader("KdnNr,APP_DATE,SERVICE\nC-2,2026-11-02T10:00Z,DIA\n"));
+        long waitedMillis = Duration.ofNanos(System.nanoTime() - started).toMillis();
+        released.get();
+
+        assertThat(waitedMillis).isGreaterThanOrEqualTo(1000);
+        assertThat(jdbc.queryForObject("select count(*) from appointment", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    void otherProvidersAreNotBlocked() throws Exception {
+        var released = LockProbe.holdProviderLock(transactions, providers, "IT-MUELLER", Duration.ofMillis(1500));
+        long started = System.nanoTime();
+        booking.book("CS-SCHNEIDER", "DIA", "C-1", NINE);
+        long tookMillis = Duration.ofNanos(System.nanoTime() - started).toMillis();
+        released.get();
+
+        assertThat(tookMillis).isLessThan(1000);
     }
 
     private record Outcome(int succeeded, int conflicts) {
