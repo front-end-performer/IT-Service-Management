@@ -10,3 +10,4 @@ Each record follows the format *Context, Decision, Consequences*.
 | [0004](0004-time-model.md) | UTC instants, half-open intervals, peak-concurrency check |
 | [0005](0005-csv-import-policy.md) | CSV import: explicit provider, row-level validation, traceable report |
 | [0006](0006-api-deviations.md) | Deviations from and extensions to `rest-api-spec.yml` |
+| [0007](0007-opening-hours.md) | Opening hours per provider in local time, DST, no crossing of closing time or midnight |

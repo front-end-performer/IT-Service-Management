@@ -12,7 +12,7 @@ with a human developer making the decisions and reviewing the results.
    - It checked the Ext JS licensing situation on the public registries. The npm `@sencha/ext` 8.0 package turned out
      to be trial-licensed, while `extjs-gpl@6.2.0` is GPL.
    - Open questions were put to the developer, who decided: Ext JS vendored rather than loaded from a CDN, no opening
-     hours, Maven with PostgreSQL as the default.
+     hours (later revised, see step 7), Maven with PostgreSQL as the default.
    - The resulting plan is archived in [`ai/implementation-plan.md`](ai/implementation-plan.md). The developer
      checked it against the task's requirements before approving.
 2. **Implementation, in the plan's order.** The steps were: scaffolding (Spring Initializr), the pure scheduling core
@@ -45,6 +45,12 @@ with a human developer making the decisions and reviewing the results.
    parallel requests, parallel re-imports, the checklist's A/B/C peak example, capacity 3, file-order conflicts, DIA
    duration per provider, extensibility via config, the H2 profile and frontend serving. The import race tests were
    confirmed to fail when the import does not take the provider lock.
+
+7. **Opening hours.** During planning, the developer chose to follow the spec literally, without opening hours. A
+   later checklist from the developer listed them as a must. They were added as a documented deviation
+   ([ADR 0007](adr/0007-opening-hours.md)): per provider, in local time, with daylight saving handled, and no
+   crossing of closing time or midnight. Before choosing the configured hours, Claude checked that every legacy
+   appointment falls within them.
 
 ## What the human did
 

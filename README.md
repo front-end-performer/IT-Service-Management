@@ -66,7 +66,8 @@ foreign service codes are rejected and listed in the report. For example, the Sc
 gives 11 rows imported (DIA) and 9 rejected (`UNKNOWN_SERVICE_CODE`: LAP, OSI), each with its line number. Importing
 the same file again adds nothing: every row is reported as a `DUPLICATE`.
 
-Rejection reasons: `MALFORMED_ROW`, `MISSING_FIELD`, `INVALID_DATE`, `OFF_GRID`, `UNKNOWN_SERVICE_CODE`,
+Rejection reasons: `MALFORMED_ROW`, `MISSING_FIELD`, `INVALID_DATE`, `OFF_GRID`, `OUTSIDE_OPENING_HOURS`,
+`UNKNOWN_SERVICE_CODE`,
 `CAPACITY_EXCEEDED`, `DUPLICATE`. Reports are stored and can be fetched again via
 `GET /it-services/{id}/appointment-imports[/{importId}]`.
 
@@ -104,8 +105,12 @@ is 09:00 in Germany (CET).
   appointments may be historic.
 - Durations need not be multiples of 15 minutes. Only starts are on the grid, and the capacity check uses exact
   intervals.
-- Suggestions are every grid start in `[from, to]` whose service finishes by `to` and that fits. The search range is
-  limited to 31 days. There are no opening hours, because the task doesn't define any.
+- Appointments must lie completely within the provider's **opening hours** (local time, `Europe/Berlin`, with
+  daylight saving handled). They may end exactly at closing time, but may not run past it or across midnight. Müller is
+  open Mon–Fri 08:00–18:00 and Sat 09:00–13:00; Schneider Mon–Fri 08:00–17:00 and Sat 10:00–14:00. This is a
+  documented deviation; see [ADR 0007](docs/adr/0007-opening-hours.md).
+- Suggestions are every grid start in `[from, to]` whose service finishes by `to`, lies within opening hours and fits.
+  The search range is limited to 31 days.
 - Overbooking under concurrent requests is prevented with a row lock on the provider during the re-check and the
   insert. See [ADR 0003](docs/adr/0003-pessimistic-provider-lock.md).
 
@@ -120,6 +125,10 @@ catalog:
     - id: PC-HILFE-WEBER
       name: PC-Hilfe Weber
       capacity: 4
+      time-zone: Europe/Berlin
+      opening-hours:            # missing days are closed; omit entirely = open around the clock
+        MONDAY: 09:00-17:00
+        FRIDAY: 09:00-15:00
       services:
         - { code: DIA, name: PC-Diagnose, duration-minutes: 20 }
 ```
@@ -127,11 +136,12 @@ catalog:
 ## Tests
 
 ```bash
-./mvnw test     # 71 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
+./mvnw test     # 83 tests; integration tests start PostgreSQL 17 via Testcontainers (Docker required)
 ```
 
 | Test | Covers |
 |---|---|
+| `OpeningHoursTest` | Local opening hours, closed days, end exactly at closing, past closing, never across midnight, DST in spring and autumn |
 | `CapacityCalculatorTest`, `SlotFinderTest`, `TimeGridTest` | Overlaps, touching intervals, a peak inside the duration, Müller (cap 2) and Schneider (cap 3) scenarios, grid rounding |
 | `AppointmentApiTest` | Booking (201/400/404/409), the end time per provider, past starts, times without seconds, duplicates, suggestions, filters, details |
 | `ConcurrentBookingTest` | 20 parallel bookings of one slot give exactly 2 created; overlapping parallel bookings; an import racing bookings; identical parallel requests; parallel re-imports |

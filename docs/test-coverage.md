@@ -1,7 +1,7 @@
 # Requirements → tests
 
 Each requirement of the [task](task/README.de.md) and each known pitfall, with the test that proves it. Run everything
-with `./mvnw test` (71 tests). PostgreSQL runs via Testcontainers, and one test runs on H2.
+with `./mvnw test` (83 tests). PostgreSQL runs via Testcontainers, and one test runs on H2.
 
 Unless a different class is named, test methods without a class are in the class of the row above or in the obvious
 class (`AppointmentApiTest`, `ImportApiTest`, `ConcurrentBookingTest`).
@@ -42,6 +42,10 @@ class (`AppointmentApiTest`, `ImportApiTest`, `ConcurrentBookingTest`).
 | Unaligned search start and whether `to` bounds the end | `suggestionsRoundAnUnalignedFromUpAndEndByTo`, `SlotFinderTest.searchStartIsRoundedUpToTheGrid` |
 | Invalid or too-large search range | `suggestionsValidateTheSearchRange` |
 | Past slots | `rejectsBookingsInThePast`, `neverSuggestsPastSlots` |
+| Opening hours per provider (deviation, ADR 0007) | `suggestionsFollowEachProvidersOpeningHours`, `rejectsBookingsOutsideOpeningHoursOrPastClosing`, `SlotFinderTest.onlySuggestsSlotsCompletelyWithinOpeningHours`, `OpeningHoursTest` |
+| Time zone and daylight-saving switch (CET/CEST) | `OpeningHoursTest.followsTheDaylightSavingSwitchInAutumn` / `…InSpring`, `AppointmentApiTest.suggestionsFollowTheDaylightSavingSwitch` |
+| Not past closing time, not across midnight | `OpeningHoursTest.appointmentMustLieCompletelyWithinTheDay`, `neverAcrossMidnight`, `rejectsBookingsOutsideOpeningHoursOrPastClosing` |
+| Imports must respect opening hours too | `ImportApiTest.rejectsImportedAppointmentsOutsideOpeningHours` |
 | Durations that are not multiples of 15 | `SlotFinderTest.durationsThatAreNotMultiplesOfFifteenMinutesWork`, `CatalogExtensibilityTest` (20 min) |
 | A duration change must not move existing appointments | `CatalogExtensibilityTest` |
 | DIA exists at both providers with different durations | `ImportApiTest.sameServiceCodeUsesTheDurationOfTheTargetProvider` |

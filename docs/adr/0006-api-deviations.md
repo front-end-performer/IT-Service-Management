@@ -12,6 +12,7 @@ addition, and it is reflected in [`rest-api-spec.yml`](../../rest-api-spec.yml).
 | Error bodies as RFC 9457 `application/problem+json` (`problem` definition) | The spec defines status codes but no error body. Clients and the UI need the reason, e.g. "No capacity left for LAP at …". |
 | `400` on `GET …/appointments` for an invalid `from`/`to` | Unparsable dates and `from > to` were otherwise undefined. |
 | `400` on suggestions for a range over 31 days | Prevents unbounded computations. The status code was already specified. |
+| `400` for a booking outside the provider's opening hours (or past closing time); no suggestions outside them | Opening hours are a documented deviation, see [ADR 0007](0007-opening-hours.md). The request can never succeed, so 400 rather than 409. |
 | `400` for a booking start in the past | Not specified. A past slot can never be "available". |
 | `409` also for a duplicate booking (same customer, service and start) | The spec describes 409 as "Termin nicht verfügbar". A duplicate is a variant of that. |
 | `Location` header on `201` | Standard REST practice. The body is unchanged. |
