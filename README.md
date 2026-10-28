@@ -176,14 +176,16 @@ importing the two legacy files as shown above, at http://127.0.0.1:8080/. All ti
 | 2 | Select a service | Choose Müller, open "Service" | DIA 30 min, LAP 120 min, OSI 60 min |
 | 3 | Enter a period | From 2026-11-02 08:00, To 2026-11-02 13:00, service LAP | Fields accept the values |
 | 4 | Show suggestions | "Find available appointments" | 09:45, 10:00, … 11:00. Nothing before 09:45, because the imported LAP 09:00 and DIA 09:15 fill capacity 2. |
-| 5 | Book | Select 09:45, customer number `C-42`, "Book selected appointment" | Confirmation with end 11:45; the list refreshes; booking the same slot again shows "No capacity left" (409) |
+| 5 | Book | Select 09:45, customer number `C-42`, "Book selected appointment" | Confirmation with end 11:45. The list refreshes, and 09:45 is gone. |
+| 5b | Re-check on booking | Search DIA 08:00–17:00. Before clicking *Book* on 08:00, fill that slot from outside, e.g. twice `curl -H 'Content-Type: application/json' -d '{"customerNumber":"X","start":"2026-11-02T08:00:00Z","repairServiceId":"DIA"}' http://127.0.0.1:8080/it-services/IT-MUELLER/appointments` with two customer numbers. Then click *Book*. | "Booking failed: No capacity left for DIA at 2026-11-02T08:00:00Z" (409). The list refreshes without 08:00. |
 | 6 | Provider's appointments in a table | *Provider appointments* tab, Müller, From/To 2026-11-02, service LAP, "Search" | Two rows: 10003 (IMPORTED) and C-42 (BOOKED) |
 | 7 | Details of an appointment | Click a row | The details panel shows id, customer, start, end, provider, service and source |
 
 Also check the *Import CSV* tab: importing `termine/IT-Service-Mueller.csv` into Müller lists rejected rows with line
 number and reason (`UNKNOWN_SERVICE_CODE` for VIR/DAT).
 
-This flow was last run via headless Chrome (see [`docs/ai-usage.md`](docs/ai-usage.md)).
+This whole check, including 5b and the import, was last run via headless Chrome against the packaged JAR with no
+browser console errors (see [`docs/ai-usage.md`](docs/ai-usage.md)).
 
 ## Project layout
 

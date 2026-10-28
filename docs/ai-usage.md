@@ -77,9 +77,20 @@ with a human developer making the decisions and reviewing the results.
      out in [ADR 0002](adr/0002-configuration-driven-catalog.md). The quotes are in
      [`test-coverage.md`](test-coverage.md).
 
+10. **Review against the evaluation criteria.** The packaged JAR was run again, and the README's manual frontend check
+    was driven in headless Chrome:
+    - all seven functions, the import tab, and the race "slot taken between suggestion and click";
+    - the UI shows the 409 reason and refreshes the suggestions;
+    - no browser console errors.
+
+    The first attempt at the race case booked successfully. Claude traced this to its own test script: the slot was
+    "filled" with LAPs, which the server correctly rejected, so the slot stayed free. The application was right. The
+    script was fixed and the check rerun. The review also found a README step that could not be reproduced as
+    written; it was rewritten as step 5b.
+
 ## What the human did
 
-- Set the scope and constraints: Ext JS sourcing, no opening hours, build tool and database.
+- Set the scope and constraints: Ext JS sourcing, opening hours (first none, later required), build tool and database.
 - Approved the plan and asked for a check against the task before implementation.
 - Installed the JDK when the machine turned out to have only a JRE. The assistant is configured never to use root
   privileges.
