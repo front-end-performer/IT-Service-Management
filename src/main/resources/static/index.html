@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>IT Service Appointments</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="vendor/extjs-6.2.0/classic/theme-triton/resources/theme-triton-all.css">
+    <!-- The two parts directly: theme-triton-all.css only @imports them, which costs an extra, blocking request. -->
+    <link rel="stylesheet" href="vendor/extjs-6.2.0/classic/theme-triton/resources/theme-triton-all_1.css">
+    <link rel="stylesheet" href="vendor/extjs-6.2.0/classic/theme-triton/resources/theme-triton-all_2.css">
     <link rel="stylesheet" href="app/app.css">
     <script src="vendor/extjs-6.2.0/ext-all.js"></script>
     <script src="vendor/extjs-6.2.0/classic/theme-triton/theme-triton.js"></script>
