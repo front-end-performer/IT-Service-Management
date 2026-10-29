@@ -11,8 +11,8 @@ Ext.define('Appointments.view.BookingPanel', {
     layout: {type: 'hbox', align: 'stretch'},
     bodyPadding: 16,
 
-    START_HINT: '<div class="app-hint" style="padding: 20px">' + Appointments.i18n.t('booking.startHint') + '</div>',
-    NOTHING_FOUND: '<div class="app-hint" style="padding: 20px">' + Appointments.i18n.t('booking.nothingFound') + '</div>',
+    START_HINT: '<div class="app-hint" style="padding: 20px 16px">' + Appointments.i18n.t('booking.startHint') + '</div>',
+    NOTHING_FOUND: '<div class="app-hint" style="padding: 20px 16px">' + Appointments.i18n.t('booking.nothingFound') + '</div>',
 
     initComponent: function () {
         var me = this, t = Appointments.i18n.t,
@@ -29,7 +29,7 @@ Ext.define('Appointments.view.BookingPanel', {
             title: t('booking.formTitle'),
             width: 380,
             margin: '0 16 0 0',
-            bodyPadding: 20,
+            bodyPadding: '4 16 20', // sides in line with the title; first label level with the slot panel's hint
             scrollable: 'y',
             defaults: {labelAlign: 'top', anchor: '100%'},
             items: [{
@@ -75,17 +75,26 @@ Ext.define('Appointments.view.BookingPanel', {
             }, {
                 xtype: 'component',
                 cls: 'app-hint',
-                margin: '0 0 16 0',
                 html: Ext.String.htmlEncode(t('booking.rangeHint'))
-            }, {
-                xtype: 'button',
-                itemId: 'searchButton',
-                text: t('booking.search'),
-                iconCls: 'x-fa fa-search',
-                scale: 'medium',
-                disabled: true, // enabled once a service is selected, see onServiceChange
-                handler: me.search,
-                scope: me
+            }],
+            // Docked like the slot panel's toolbar, so both buttons share one row at the bottom.
+            dockedItems: [{
+                xtype: 'toolbar',
+                dock: 'bottom',
+                padding: '10 16',
+                items: [{
+                    xtype: 'button',
+                    itemId: 'searchButton',
+                    ui: 'default', // the blue primary button, not the plain toolbar style
+                    text: t('booking.search'),
+                    iconCls: 'x-fa fa-search',
+                    scale: 'medium',
+                    flex: 1,
+                    margin: 0, // no toolbar item gap: same width as the fields above
+                    disabled: true, // enabled once a service is selected, see onServiceChange
+                    handler: me.search,
+                    scope: me
+                }]
             }]
         }, {
             xtype: 'panel',
@@ -98,18 +107,18 @@ Ext.define('Appointments.view.BookingPanel', {
                 dock: 'top',
                 itemId: 'slotInfo',
                 cls: 'app-hint',
-                padding: '12 20 4',
+                padding: '12 16 4',
                 html: t('booking.slotInfo')
             }, {
                 xtype: 'component',
                 dock: 'top',
                 itemId: 'banner',
-                padding: '8 20 0',
+                padding: '8 16 0',
                 hidden: true
             }, {
                 xtype: 'toolbar',
                 dock: 'bottom',
-                padding: '10 20',
+                padding: '10 16',
                 items: [{
                     xtype: 'component',
                     itemId: 'selectedInfo',

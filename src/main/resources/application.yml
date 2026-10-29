@@ -15,6 +15,14 @@ spring:
       ddl-auto: validate
     properties:
       hibernate.jdbc.time_zone: UTC
+  web:
+    resources:
+      cache:
+        # Files in the JAR all carry the same 1980 timestamp, so Last-Modified would make browsers keep the UI of an
+        # older build after a rebuild. Always fetch the current files instead.
+        use-last-modified: false
+        cachecontrol:
+          no-cache: true
   servlet:
     multipart:
       max-file-size: 5MB
