@@ -11,8 +11,10 @@ Ext.define('Appointments.view.BookingPanel', {
     layout: {type: 'hbox', align: 'stretch'},
     bodyPadding: '32 24 24',
 
-    START_HINT: '<div class="app-hint app-hint-13" style="padding: 20px 24px">' + Appointments.i18n.t('booking.startHint') + '</div>',
-    NOTHING_FOUND: '<div class="app-hint app-hint-13" style="padding: 20px 24px">' + Appointments.i18n.t('booking.nothingFound') + '</div>',
+    // Empty states of the slot list: the step that is still missing, or why the search found nothing.
+    CHOOSE_SERVICE: '<div class="app-hint app-hint-13 app-empty">' + Appointments.i18n.t('booking.chooseService') + '</div>',
+    READY_TO_SEARCH: '<div class="app-hint app-hint-13 app-empty">' + Appointments.i18n.t('booking.readyToSearch') + '</div>',
+    NOTHING_FOUND: '<div class="app-hint app-hint-13 app-empty">' + Appointments.i18n.t('booking.nothingFound') + '</div>',
 
     initComponent: function () {
         var me = this, t = Appointments.i18n.t,
@@ -38,7 +40,7 @@ Ext.define('Appointments.view.BookingPanel', {
                 margin: 1, // room for the card's outline
                 title: t('booking.formTitle'),
                 bodyPadding: '18 24 24',
-                defaults: {labelAlign: 'top', anchor: '100%', margin: '0 0 18 0'},
+                defaults: {labelAlign: 'top', anchor: '100%', margin: '0 0 18 0', maxWidth: null}, // full width, no app-wide field cap
                 items: [{
                     xtype: 'providercombo',
                     itemId: 'provider',
@@ -72,14 +74,14 @@ Ext.define('Appointments.view.BookingPanel', {
                     items: [{
                         fieldLabel: t('common.from'),
                         items: [
-                            {xtype: 'datefield', itemId: 'fromDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1},
-                            {xtype: 'timefield', itemId: 'fromTime', format: 'H:i', increment: 15, value: '08:00', allowBlank: false, width: 96, margin: '0 0 0 8'}
+                            {xtype: 'datefield', itemId: 'fromDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1, maxWidth: null},
+                            {xtype: 'timefield', itemId: 'fromTime', format: 'H:i', increment: 15, value: '08:00', allowBlank: false, width: 112, margin: '0 0 0 8'}
                         ]
                     }, {
                         fieldLabel: t('common.to'),
                         items: [
-                            {xtype: 'datefield', itemId: 'toDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1},
-                            {xtype: 'timefield', itemId: 'toTime', format: 'H:i', increment: 15, value: '18:00', allowBlank: false, width: 96, margin: '0 0 0 8'}
+                            {xtype: 'datefield', itemId: 'toDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1, maxWidth: null},
+                            {xtype: 'timefield', itemId: 'toTime', format: 'H:i', increment: 15, value: '18:00', allowBlank: false, width: 112, margin: '0 0 0 8'}
                         ]
                     }]
                 }, {
@@ -102,7 +104,7 @@ Ext.define('Appointments.view.BookingPanel', {
         }, {
             xtype: 'panel',
             itemId: 'slotPanel',
-            cls: 'app-card',
+            cls: 'app-card app-quiet-mask', // searching and booking show a spinner over this card only
             border: false,
             margin: 1, // room for the card's outline
             title: t('booking.slots'),
@@ -176,7 +178,7 @@ Ext.define('Appointments.view.BookingPanel', {
                 itemSelector: 'div.slot',
                 overItemCls: 'slot-over',
                 selectedItemCls: 'slot-selected',
-                emptyText: me.START_HINT,
+                emptyText: me.CHOOSE_SERVICE,
                 deferEmptyText: false,
                 listeners: {selectionchange: me.updateSelection, scope: me}
             }]
@@ -213,7 +215,9 @@ Ext.define('Appointments.view.BookingPanel', {
 
     /** Provider or service changed: the listed start times no longer apply. */
     clearSlots: function () {
-        this.down('#suggestions').emptyText = this.START_HINT;
+        this.slotRequest = (this.slotRequest || 0) + 1; // a search still running must not fill the list
+        this.down('#slotPanel').setLoading(false);
+        this.down('#suggestions').setEmptyText(this.down('#service').getValue() ? this.READY_TO_SEARCH : this.CHOOSE_SERVICE);
         this.suggestionStore.removeAll();
         this.down('#slotCount').setHtml('');
         this.down('#banner').hide();
@@ -234,18 +238,27 @@ Ext.define('Appointments.view.BookingPanel', {
         var zone = me.down('#provider').getTimeZone(),
             from = Api.toInstant(me.down('#fromDay').getValue(), me.down('#fromTime').getValue(), zone),
             to = Api.toInstant(me.down('#toDay').getValue(), me.down('#toTime').getValue(), zone);
-        me.setLoading(t('booking.searching'));
+        // The form stays usable while the slots load, so only the latest search may fill the list.
+        var request = me.slotRequest = (me.slotRequest || 0) + 1;
+        me.down('#slotPanel').setLoading(t('booking.searching'));
         Api.getSuggestions(me.down('#provider').getValue(), me.down('#service').getValue(), from, to)
             .then(function (suggestions) {
-                me.showSlots(suggestions, zone);
+                if (request === me.slotRequest) {
+                    me.showSlots(suggestions, zone);
+                }
             })
             .catch(function (e) {
+                if (request !== me.slotRequest) {
+                    return;
+                }
                 me.clearSlots();
                 Api.showBanner(me.down('#banner'), 'error',
                     '<b>' + t('booking.searchFailed') + '</b>' + Ext.String.htmlEncode(Api.errorText(e, zone)));
             })
             .finally(function () {
-                me.setLoading(false);
+                if (request === me.slotRequest) {
+                    me.down('#slotPanel').setLoading(false);
+                }
             });
     },
 
@@ -310,7 +323,7 @@ Ext.define('Appointments.view.BookingPanel', {
             zone = me.down('#provider').getTimeZone(),
             when = Ext.String.htmlEncode(me.describeSlot(suggestion)),
             banner = me.down('#banner');
-        me.setLoading(t('booking.booking'));
+        me.down('#slotPanel').setLoading(t('booking.booking'));
         Api.book(providerId, {
             customerNumber: Ext.String.trim(me.down('#customerNumber').getValue()),
             start: suggestion.get('start'),
@@ -323,7 +336,7 @@ Ext.define('Appointments.view.BookingPanel', {
             Api.showBanner(banner, e.status === 503 ? 'warn' : 'error', me.describeBookingError(e, when, zone));
         }).finally(function () {
             // Show fresh availability: the booked or taken time is gone from the list.
-            me.setLoading(false);
+            me.down('#slotPanel').setLoading(false);
             me.loadSuggestions();
         });
     },

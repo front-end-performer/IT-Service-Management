@@ -46,6 +46,10 @@ nicht, welche Zeile gewinnt, wenn Zeilen kollidieren. Beides sind daher unsere E
 - Wird der falsche Anbieter gewählt, listet der Bericht die fremden Leistungscodes auf, statt sie unter dem falschen
   Anbieter zu importieren. Gemeinsame Codes wie DIA würden trotzdem mit der Dauer dieses Anbieters importiert. Ohne
   eine Anbieterspalte in der Datei ist das nicht vermeidbar, und es ist im Bericht sichtbar.
+- Die Oberfläche warnt deshalb schon vor dem Import: Sie liest die Spalte `SERVICE` der gewählten Datei und nennt die
+  Codes, die der gewählte Anbieter nicht anbietet, und den Anbieter, der alle Codes der Datei anbietet. Der Import
+  bleibt möglich („Import anyway“), denn die Wahl des Anbieters ist ausdrücklich, und der Server prüft jede Zeile
+  ohnehin. Eine Datei nur mit gemeinsamen Codes (DIA) lässt sich so nicht zuordnen.
 - **Verarbeitung in Abschnitten:** Ein Import läuft in Abschnitten von `appointments.import-chunk-size` Zeilen
   (Standard 100). Jeder Abschnitt ist eine eigene Transaktion unter der Anbietersperre; eine große Datei blockiert
   Buchungen dieses Anbieters also nie länger als einen Abschnitt.

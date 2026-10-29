@@ -5,7 +5,7 @@ Ext.define('Appointments.view.ProviderCombo', {
 
     fieldLabel: Appointments.i18n.t('provider.label'),
     labelWidth: 140,
-    width: 480,
+    width: 250,
     queryMode: 'local',
     editable: false,
     forceSelection: true,
@@ -28,7 +28,45 @@ Ext.define('Appointments.view.ProviderCombo', {
             me.store.loadData(providers.map(function (p) {
                 return Ext.apply({label: p.name}, p);
             }));
+            // Start with the last used provider, else the first one, so no tab opens empty.
+            var last = me.self.lastSelected();
+            if (!me.getValue() && providers.length) {
+                me.setValue(me.store.getById(last) ? last : providers[0].id);
+            }
         }, Ext.emptyFn); // already reported above
+        me.on('change', me.shareSelection, me);
+    },
+
+    statics: {
+        STORAGE_KEY: 'appointments.provider',
+
+        /** Provider chosen on any tab, also in an earlier visit (browser storage, when available). */
+        lastSelected: function () {
+            try {
+                return this.selected || window.localStorage.getItem(this.STORAGE_KEY);
+            } catch (e) {
+                return null;
+            }
+        }
+    },
+
+    /** One provider for all tabs: a choice on one tab selects it on the others too. */
+    shareSelection: function (combo, providerId) {
+        if (!providerId) {
+            return;
+        }
+        this.self.selected = providerId;
+        try {
+            window.localStorage.setItem(this.self.STORAGE_KEY, providerId);
+        } catch (e) {
+            // storage blocked: the choice is kept for this visit only
+        }
+        Ext.Array.each(Ext.ComponentQuery.query('providercombo'), function (other) {
+            // Combos still loading pick up the shared choice once their providers arrive.
+            if (other !== combo && other.getStore().getCount() && other.getValue() !== providerId) {
+                other.setValue(providerId);
+            }
+        });
     },
 
     /** Time zone of the selected provider; all times on screen are in this zone. */

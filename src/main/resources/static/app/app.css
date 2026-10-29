@@ -5,6 +5,13 @@
  * Colors: text #1B2430 / #3D4756 / #4A5565, lines #E3E7EC / #D5DBE3, page #F5F7FA, primary #1F5FBF.
  */
 
+/* Font sizes: 16px default, and nothing more than 2px away from it. Use only these three. */
+:root {
+    --font-small: 14px;
+    --font-default: 16px;
+    --font-large: 18px;
+}
+
 /* Font: Inter when installed, else the system UI font. Nothing is downloaded. The selectors are every Triton rule
    that sets 'Open Sans' (theme-triton-all*.css) except windows, which the app does not use, so icon fonts on triggers
    and tools stay untouched. */
@@ -60,6 +67,29 @@
     font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* Triton sets 13px (15px on the date picker's month) on these; bring them into the range above. */
+.x-body,
+.x-boundlist-item,
+.x-datepicker-month .x-btn-inner,
+.x-form-cb-label-default,
+.x-form-display-field-default,
+.x-grid-empty,
+.x-mask-msg-inner,
+.x-toolbar-text-default,
+.x-toolbar-text-footer {
+    font-size: var(--font-default);
+}
+
+.x-datepicker-column-header,
+.x-datepicker-date,
+.x-form-invalid-under-default,
+.x-tip-body-default,
+.x-tip-body-form-invalid,
+.x-tip-header-title-default,
+.x-tip-header-title-form-invalid {
+    font-size: var(--font-small);
+}
+
 .x-body {
     color: #1B2430;
     font-weight: 400;
@@ -79,7 +109,7 @@
 
 .app-brand {
     color: #1B2430;
-    font-size: 16px;
+    font-size: var(--font-default);
     font-weight: 600;
     line-height: 28px;
     padding: 18px 0;
@@ -112,7 +142,7 @@
 
 .app-shell .x-tab-default .x-tab-inner-default {
     color: #4A5565;
-    font-size: 14px;
+    font-size: var(--font-default);
     font-weight: 500;
     line-height: 18px;
 }
@@ -143,7 +173,7 @@
 
 .app-page-title {
     margin: 0;
-    font-size: 22px;
+    font-size: var(--font-large);
     font-weight: 600;
     line-height: 28px;
 }
@@ -164,7 +194,7 @@
 
 .app-card > .x-panel-header .x-title-text {
     color: #1B2430;
-    font-size: 18px;
+    font-size: var(--font-large);
     font-weight: 600;
     line-height: 24px;
 }
@@ -175,7 +205,7 @@
 }
 
 .app-card-small > .x-panel-header .x-title-text {
-    font-size: 14px;
+    font-size: var(--font-default);
     line-height: 20px;
 }
 
@@ -190,7 +220,7 @@
 }
 
 .app-card-count {
-    font-size: 13px;
+    font-size: var(--font-small);
     color: #4A5565;
 }
 
@@ -212,7 +242,7 @@
 
 .x-form-text-default {
     color: #1B2430;
-    font-size: 14px;
+    font-size: var(--font-default);
     line-height: 22px;
     padding: 8px 12px;
     min-height: 38px;
@@ -230,7 +260,7 @@
 }
 
 .x-form-item-label-default.x-form-item-label-top {
-    font-size: 13px;
+    font-size: var(--font-small);
     line-height: 18px;
     min-height: 0;
     padding: 0 0 6px;
@@ -301,7 +331,7 @@
 }
 
 .x-btn .x-btn-inner {
-    font-size: 14px;
+    font-size: var(--font-default);
     font-weight: 600;
     line-height: 18px;
 }
@@ -311,7 +341,7 @@
 }
 
 .x-btn .x-btn-icon-el {
-    font-size: 16px;
+    font-size: var(--font-default);
     line-height: 18px;
     height: 18px;
 }
@@ -320,6 +350,12 @@
     outline: 2px solid #1F5FBF;
     outline-offset: 2px;
     box-shadow: none;
+}
+
+/* On a blue button the offset outline reads as a second border; a single halo against the edge instead. */
+.app-btn-primary.x-btn.x-btn-focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(31, 95, 191, 0.35);
 }
 
 /* Bar at the foot of a card. */
@@ -342,7 +378,7 @@
     background: #FAFBFC;
     border-right: 0;
     color: #4A5565;
-    font-size: 12px;
+    font-size: var(--font-small);
     font-weight: 600;
 }
 
@@ -352,7 +388,7 @@
 
 .app-card .x-grid-item {
     color: #1B2430;
-    font-size: 14px;
+    font-size: var(--font-default);
 }
 
 .app-card .x-grid-cell-inner {
@@ -399,18 +435,18 @@
 
 .app-code {
     font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 12.5px;
+    font-size: var(--font-small);
     color: #1B2430;
 }
 
 .app-hint {
-    font-size: 12px;
+    font-size: var(--font-small);
     color: #4A5565;
     line-height: 1.5;
 }
 
 .app-hint-13 {
-    font-size: 13px;
+    font-size: var(--font-small);
 }
 
 .app-chips {
@@ -420,7 +456,7 @@
 }
 
 .app-chip {
-    font-size: 12px;
+    font-size: var(--font-small);
     color: #4A5565;
     background: #F0F3F7;
     border-radius: 999px;
@@ -435,7 +471,7 @@
 }
 
 .app-badge {
-    font-size: 12px;
+    font-size: var(--font-small);
     font-weight: 600;
     background: #EAF1FC;
     color: #174A96;
@@ -464,7 +500,7 @@
     border-radius: 10px;
     border: 1px solid;
     padding: 14px 16px;
-    font-size: 13px;
+    font-size: var(--font-default);
     line-height: 1.5;
 }
 
@@ -475,7 +511,7 @@
 
 .app-banner b {
     display: block;
-    font-size: 14px;
+    font-size: var(--font-default);
     font-weight: 600;
     margin-bottom: 4px;
 }
@@ -555,6 +591,10 @@
     .app-toast {
         animation: none;
     }
+
+    .app-quiet-mask .x-mask-msg-text {
+        animation-duration: 2.4s;
+    }
 }
 
 /* Slot tiles: one row per hour, one column per quarter (:00, :15, :30, :45). */
@@ -568,7 +608,7 @@
 
 .slot-day {
     grid-column: 1 / -1;
-    font-size: 13px;
+    font-size: var(--font-small);
     font-weight: 600;
     color: #3D4756;
     margin-top: 12px;
@@ -580,7 +620,7 @@
 
 .slot-hour {
     grid-column: 1;
-    font-size: 12px;
+    font-size: var(--font-small);
     font-weight: 600;
     color: #4A5565;
     font-variant-numeric: tabular-nums;
@@ -603,12 +643,12 @@
 }
 
 .slot-start {
-    font-size: 14px;
+    font-size: var(--font-default);
     font-weight: 600;
 }
 
 .slot-end {
-    font-size: 12px;
+    font-size: var(--font-small);
     color: #4A5565;
 }
 
@@ -626,6 +666,78 @@
     color: #fff;
 }
 
+/* Empty appointments table: the text alone, in the middle of the card. Laid over the view rather than sized to
+   100%: Ext keeps a 1px-high item container above it, which would make the view scroll by 1px. */
+.app-grid-centered-empty .x-grid-empty {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 0;
+}
+
+/* Empty appointments table: no card at all, just the text on the page ground. Lines are made transparent rather
+   than removed, so Ext's measured sizes stay the same. */
+.app-card.app-grid-is-empty {
+    background: transparent;
+    box-shadow: none;
+}
+
+.app-grid-is-empty .x-grid-body,
+.app-grid-is-empty .x-grid-view,
+.app-grid-is-empty .x-grid-empty {
+    background: transparent;
+}
+
+.app-card.app-grid-is-empty .x-grid-body {
+    border-color: transparent;
+}
+
+/* Loading: a small spinning ring, no overlay, no box, no text. */
+.app-quiet-mask .x-mask,
+.app-quiet-mask .x-mask-msg,
+.app-quiet-mask .x-mask-msg-inner {
+    background: transparent;
+    border: 0;
+    padding: 0;
+}
+
+.app-quiet-mask .x-mask-msg-text {
+    width: 28px;
+    height: 28px;
+    box-sizing: border-box;
+    padding: 0;
+    border: 3px solid #E3E7EC;
+    border-top-color: #1F5FBF;
+    border-radius: 50%;
+    background: none;
+    font-size: 0;
+    animation: app-spin 0.8s linear infinite;
+}
+
+@keyframes app-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Empty slot list and appointments table: the hint in the middle of the card. */
+.app-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 20px 24px;
+    text-align: center;
+}
+
+/* A view showing only the hint has nothing to scroll; Ext's helper elements would otherwise add a scrollbar. */
+.x-scroller:has(> .app-empty) {
+    overflow: hidden !important;
+}
+
 /* The chosen slot in the booking bar. */
 .app-selected {
     display: flex;
@@ -634,19 +746,19 @@
 }
 
 .app-selected b {
-    font-size: 14px;
+    font-size: var(--font-default);
     font-weight: 600;
 }
 
 .app-selected .app-none {
-    font-size: 14px;
+    font-size: var(--font-default);
     font-weight: 500;
     color: #4A5565;
 }
 
 /* Appointment details. */
 .app-details {
-    font-size: 14px;
+    font-size: var(--font-default);
     color: #1B2430;
 }
 
@@ -659,13 +771,13 @@
 
 .app-details-when b {
     display: block;
-    font-size: 18px;
+    font-size: var(--font-large);
     font-weight: 600;
     margin-bottom: 4px;
 }
 
 .app-details-when .app-hint {
-    font-size: 13px;
+    font-size: var(--font-small);
 }
 
 .app-details dl {
@@ -686,14 +798,14 @@
 
 .app-details dd.app-id {
     font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 13px;
+    font-size: var(--font-small);
     color: #3D4756;
 }
 
 /* CSV drop zone and the chosen file. */
 .app-label {
     display: block;
-    font-size: 13px;
+    font-size: var(--font-small);
     font-weight: 500;
     color: #3D4756;
     margin-bottom: 6px;
@@ -711,7 +823,7 @@
     background: #FAFBFC;
     padding: 24px 16px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--font-default);
     font-weight: 500;
 }
 
@@ -731,7 +843,7 @@
 }
 
 .app-drop-error {
-    font-size: 13px;
+    font-size: var(--font-small);
     font-weight: 500;
     color: #9A3412;
 }
@@ -755,7 +867,7 @@
     border-radius: 8px;
     padding: 10px 12px;
     margin-top: 8px;
-    font-size: 14px;
+    font-size: var(--font-default);
 }
 
 .app-drop-file[hidden] {
@@ -792,26 +904,26 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--font-small);
     color: #4A5565;
     line-height: 1.5;
 }
 
 .app-format b,
 .app-checks b {
-    font-size: 12px;
+    font-size: var(--font-small);
     font-weight: 600;
     color: #3D4756;
 }
 
 .app-format code {
     font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 12.5px;
+    font-size: var(--font-small);
     color: #1B2430;
 }
 
 .app-checks {
-    font-size: 12px;
+    font-size: var(--font-small);
     color: #4A5565;
     line-height: 1.5;
 }
@@ -819,7 +931,7 @@
 .app-checklist {
     margin: 6px 0;
     padding-left: 18px;
-    font-size: 12.5px;
+    font-size: var(--font-small);
     color: #3D4756;
     line-height: 1.6;
 }
@@ -835,7 +947,7 @@
 .app-summary h2 {
     flex: 1 1 200px;
     margin: 0;
-    font-size: 16px;
+    font-size: var(--font-default);
     font-weight: 600;
     line-height: 22px;
 }
@@ -844,7 +956,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px 24px;
-    font-size: 14px;
+    font-size: var(--font-default);
 }
 
 .app-counters span::before {

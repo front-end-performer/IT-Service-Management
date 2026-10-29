@@ -188,6 +188,7 @@ Die übrigen Tests decken die Grenzfälle des Entwurfs ab:
 | `SpecContractTest` | Implementierte Endpunkte und DTO-Felder entsprechen genau `rest-api-spec.yml` |
 | `SpecConformance` (läuft in jedem API-Test mit) | Jeder Statuscode und API-Header, der in einem Test zurückkommt, ist in `rest-api-spec.yml` deklariert |
 | `ImportApiTest`, `CsvAppointmentParserTest` | Echte Bestandsdateien, Import in den falschen Anbieter, erneuter Import, jeder Ablehnungsgrund mit Zeilennummer, Header-Fehler |
+| `ChunkedImportTest` | Import in Abschnitten: Regeln gelten über Abschnittsgrenzen hinweg, ein großer Import blockiert Buchungen desselben Anbieters nicht, ein unerwarteter Fehler setzt den Import auf `FAILED`, und ein erneuter Import ist sicher |
 
 Um zu prüfen, dass die Nebenläufigkeitstests tatsächlich greifen, wurde die Sperre entfernt und die Tests erneut
 ausgeführt:
@@ -229,10 +230,13 @@ welcher Zeitzone der Browser läuft. Unter der Anbieterauswahl stehen „2 appoi
 
 Die Liste ist seitenweise (100 pro Seite); bei mehr Terminen blättern die Pfeile in der unteren Leiste.
 
-Außerdem den Tab *Import CSV* prüfen: `termine/IT-Service-Mueller.csv` in Müller importiert zeigt die Zähler „imported“,
-„duplicates skipped“ und „rejected“ und listet die nicht importierten Zeilen mit Zeilennummer und Grund („Unknown service“
-für VIR/DAT). Duplikate stehen grau als „Duplicate, skipped“ in derselben Liste, da sie übersprungen, aber kein Fehler
-sind. Ein zweiter Import derselben Datei ergibt nur Duplikate.
+Außerdem den Tab *Import CSV* prüfen: Müller und `termine/IT-Service-Mueller.csv` wählen. Schon vor dem Import warnt
+die Oberfläche „Check the provider – IT-Service Müller does not offer VIR, DAT. These rows would be rejected. The file
+looks like it belongs to Computer-Service Schneider.“, und der Knopf heißt „Import anyway“ (siehe
+[ADR 0005](docs/adr/0005-csv-import-policy.md)). Mit Schneider gewählt verschwindet die Warnung. „Import anyway“ in
+Müller zeigt die Zähler „imported“, „duplicates skipped“ und „rejected“ und listet die nicht importierten Zeilen mit
+Zeilennummer und Grund („Unknown service“ für VIR/DAT). Duplikate stehen grau als „Duplicate, skipped“ in derselben
+Liste, da sie übersprungen, aber kein Fehler sind. Ein zweiter Import derselben Datei ergibt nur Duplikate.
 
 Buchen, 5b, 5c, Import und Details liefen zuletzt (nach der Überarbeitung der Oberfläche) per Headless-Chromium gegen
 die laufende Anwendung im Profil `h2`, mit auf America/New_York gestelltem Browser (um zu belegen, dass die Zeitzone des
@@ -247,6 +251,7 @@ src/main/java/de/challenge/appointments/
   appointment/  Entität Appointment, AppointmentScheduler (einziger Schreibpfad), Buchungs-, Vorschlags- und Abfrage-Services
   imports/      CSV-Parser, Importläufe, Ablehnungsgründe
   api/          REST-Controller, DTOs, Fehlerabbildung nach RFC 9457
+  common/       gemeinsame Ausnahmen (NotFound, Conflict, InvalidRequest) und die Uhr (ClockConfig)
 src/main/resources/
   db/migration/ Flyway-Schema
   static/       Ext-JS-Anwendung (index.html, app/) und die mitgelieferte Ext-JS-6.2.0-GPL-Laufzeit

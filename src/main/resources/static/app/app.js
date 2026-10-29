@@ -1,6 +1,10 @@
 // Labels as in the design: "Customer number", not "Customer number:".
 Ext.define('Appointments.override.LabelSeparator', {override: 'Ext.form.field.Base', labelSeparator: ''});
 Ext.define('Appointments.override.ContainerLabelSeparator', {override: 'Ext.form.FieldContainer', labelSeparator: ''});
+// Fields never grow wider than this (inputs 360px, selects 250px, dates 128px), also when stretched by anchor or flex layouts.
+Ext.define('Appointments.override.FieldMaxWidth', {override: 'Ext.form.field.Base', maxWidth: 360});
+Ext.define('Appointments.override.ComboMaxWidth', {override: 'Ext.form.field.ComboBox', maxWidth: 250});
+Ext.define('Appointments.override.DateMaxWidth', {override: 'Ext.form.field.Date', maxWidth: 128});
 
 Ext.application({
     name: 'Appointments',

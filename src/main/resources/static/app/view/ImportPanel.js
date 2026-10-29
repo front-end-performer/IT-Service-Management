@@ -48,8 +48,10 @@ Ext.define('Appointments.view.ImportPanel', {
                     itemId: 'provider',
                     fieldLabel: t('import.provider'),
                     labelAlign: 'top',
+                    width: null, // full panel width: neither the combo's 250px nor the app-wide combo cap
+                    maxWidth: null,
                     allowBlank: false,
-                    listeners: {change: me.updateImportButton, scope: me}
+                    listeners: {change: me.onProviderChange, scope: me}
                 }, {
                     // Drop zone with a hidden file input; the chosen file is shown below it.
                     xtype: 'component',
@@ -74,6 +76,11 @@ Ext.define('Appointments.view.ImportPanel', {
                         'stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>' +
                         '</div>',
                     listeners: {afterrender: me.initDropZone, scope: me}
+                }, {
+                    // Warns when the file has service codes the selected provider does not offer, see checkFile.
+                    xtype: 'component',
+                    itemId: 'fileCheck',
+                    hidden: true
                 }, {
                     xtype: 'component',
                     cls: 'app-format',
@@ -104,16 +111,19 @@ Ext.define('Appointments.view.ImportPanel', {
                 itemId: 'summary',
                 cls: 'app-card',
                 margin: '1 1 17 1', // 16px gap plus room for the card's outline
-                padding: '16 20'
+                padding: '16 20',
+                hidden: true // shown after the first import, see showSummary
             }, {
                 xtype: 'grid',
-                cls: 'app-card app-card-small',
+                itemId: 'rejections',
+                cls: 'app-card app-card-small app-grid-centered-empty app-quiet-mask', // importing shows a spinner here only
                 border: false,
                 margin: 1, // room for the card's outline
                 title: t('import.rejectedRows'),
                 flex: 1,
                 store: me.rejectionStore,
-                emptyText: t('import.noRejected'),
+                emptyText: me.emptyHtml('import.noImports'),
+                listeners: {afterrender: me.updateRejections, scope: me}, // the title bar exists only once rendered
                 columns: [
                     {text: t('import.line'), dataIndex: 'lineNumber', width: 72, tdCls: 'app-cell-muted'},
                     {text: t('import.reason'), dataIndex: 'reason', width: 220, renderer: me.renderReason, scope: me},
@@ -126,7 +136,18 @@ Ext.define('Appointments.view.ImportPanel', {
             }]
         }];
         me.callParent();
-        me.showSummary(t('import.lastImport'), '<span class="app-hint app-hint-13">' + t('import.none') + '</span>');
+    },
+
+    emptyHtml: function (key) {
+        return '<div class="app-empty">' + Appointments.i18n.t(key) + '</div>';
+    },
+
+    /** Without rejected rows the card shows only the empty text: no title, no column headers. */
+    updateRejections: function () {
+        var grid = this.down('#rejections'), empty = !this.rejectionStore.getCount();
+        grid.toggleCls('app-grid-is-empty', empty);
+        grid.getHeader().setHidden(empty);
+        grid.headerCt.setHidden(empty);
     },
 
     /** Wires the hidden input, drag and drop and the remove button of the file component. */
@@ -172,6 +193,85 @@ Ext.define('Appointments.view.ImportPanel', {
         el.down('.app-drop-zone').setDisplayed(!file);
         component.updateLayout();
         this.updateImportButton();
+        this.checkFile();
+    },
+
+    onProviderChange: function () {
+        this.updateImportButton();
+        this.checkFile();
+    },
+
+    /**
+     * Before importing: does the file fit the selected provider? The file has no provider column, so a wrong choice
+     * shows only in its service codes. Codes the provider does not offer are named, with the provider that offers all
+     * of them, if any. Only a warning: importing stays possible and the server checks every row anyway. A file with
+     * only codes both providers offer (DIA) cannot be told apart, see ADR 0005.
+     */
+    checkFile: function () {
+        var me = this, Api = Appointments.Api, t = Appointments.i18n.t, combo = me.down('#provider'),
+            file = me.file, providerId = combo.getValue(), providers = combo.getStore().getRange(),
+            check = me.fileCheck = (me.fileCheck || 0) + 1; // a newer file or provider wins
+        me.showFileWarning(null);
+        if (!file || !providerId) {
+            return;
+        }
+        Promise.all([file.text(), Promise.all(providers.map(function (p) {
+            return Api.getServices(p.getId());
+        }))]).then(function (results) {
+            if (check !== me.fileCheck) {
+                return;
+            }
+            var codes = me.serviceCodes(results[0]), offered = {};
+            providers.forEach(function (p, i) {
+                offered[p.getId()] = results[1][i].map(function (s) { return s.code; });
+            });
+            var unknown = codes.filter(function (code) {
+                return offered[providerId].indexOf(code) < 0;
+            });
+            if (!unknown.length) {
+                return;
+            }
+            var owner = Ext.Array.findBy(providers, function (p) {
+                return p.getId() !== providerId && codes.every(function (code) {
+                    return offered[p.getId()].indexOf(code) >= 0;
+                });
+            });
+            me.showFileWarning('<b>' + t('import.mismatchTitle') + '</b>' +
+                t('import.mismatch', Ext.String.htmlEncode(unknown.join(', ')), Ext.String.htmlEncode(combo.getSelection().get('name'))) +
+                (owner ? ' ' + t('import.belongsTo', Ext.String.htmlEncode(owner.get('name'))) : ''));
+        }).catch(Ext.emptyFn); // no warning then; the import report still names every rejected row
+    },
+
+    /** Distinct values of the SERVICE column; [] when the header has none (the server reports that). */
+    serviceCodes: function (text) {
+        var lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(function (line) {
+                return line.trim();
+            }),
+            column = lines.length ? lines[0].split(',').map(function (name) {
+                return name.trim();
+            }).indexOf('SERVICE') : -1,
+            codes = [];
+        if (column < 0) {
+            return codes;
+        }
+        lines.slice(1).forEach(function (line) {
+            var code = (line.split(',')[column] || '').trim().replace(/^"(.*)"$/, '$1');
+            if (code && codes.indexOf(code) < 0) {
+                codes.push(code);
+            }
+        });
+        return codes.sort();
+    },
+
+    /** html: the warning, or null to hide it. The button then says that importing goes ahead regardless. */
+    showFileWarning: function (html) {
+        var t = Appointments.i18n.t, warning = this.down('#fileCheck');
+        if (html) {
+            Appointments.Api.showBanner(warning, 'warn', html);
+        } else {
+            warning.hide();
+        }
+        this.down('#importButton').setText(t(html ? 'import.importAnyway' : 'import.import'));
     },
 
     updateImportButton: function () {
@@ -181,6 +281,7 @@ Ext.define('Appointments.view.ImportPanel', {
     /** Title and counters (HTML) of the last import. */
     showSummary: function (title, html) {
         this.down('#summary').setHtml('<div class="app-summary"><h2>' + title + '</h2>' + html + '</div>');
+        this.down('#summary').show();
     },
 
     renderReason: function (reason) {
@@ -194,7 +295,7 @@ Ext.define('Appointments.view.ImportPanel', {
             return;
         }
         var providerId = me.down('#provider').getValue();
-        me.setLoading(t('import.importing'));
+        me.down('#rejections').setLoading(t('import.importing'));
         Api.importCsv(providerId, me.file).then(function (report) {
             me.showSummary(t('import.lastImportInto', Ext.String.htmlEncode(report.fileName || ''), report.serviceId),
                 '<div class="app-counters">' +
@@ -202,16 +303,27 @@ Ext.define('Appointments.view.ImportPanel', {
                 (report.status === 'COMPLETED' ? '' : '<div class="app-banner app-banner-error" style="flex: 1 1 100%">' +
                     '<div><b>' + (me.STATUSES[report.status] || report.status) + '</b>' +
                     Ext.String.htmlEncode(report.failureMessage || '') + '</div></div>'));
+            me.down('#rejections').setEmptyText(me.emptyHtml('import.noRejected'));
             me.rejectionStore.loadData(report.rejections);
+            me.updateRejections();
+            if (report.status === 'COMPLETED') {
+                // Done, so a second click does not send the file again. Choosing it again is allowed: the server skips
+                // every row as a duplicate and says so (ADR 0005). A file that failed part-way stays chosen, since
+                // importing it again is the way to finish it.
+                me.down('#file').el.down('.app-drop-input').dom.value = '';
+                me.setFile(null);
+            }
             me.fireEvent('appointmentsimported', providerId);
         }).catch(function (e) {
             // e.g. 500 "Import aborted": rows imported so far stay; importing the file again is safe.
             me.showSummary(t('import.lastImportFailed'), '<div class="app-banner app-banner-error" style="flex: 1 1 100%">' +
                 '<div><b>' + t('import.failed') + '</b>' + Ext.String.htmlEncode(e.message) + '</div></div>');
+            me.down('#rejections').setEmptyText(''); // the summary above says what went wrong
             me.rejectionStore.removeAll();
+            me.updateRejections();
             me.fireEvent('appointmentsimported', providerId);
         }).finally(function () {
-            me.setLoading(false);
+            me.down('#rejections').setLoading(false);
         });
     }
 });

@@ -71,8 +71,19 @@ Ext.define('Appointments.Api', {
         return this.request('GET', '/it-services');
     },
 
+    /**
+     * A provider's services are fixed by configuration, so each provider's list is requested once and shared by
+     * all tabs, which load it at the same moment. A failed request is forgotten, so the next call tries again.
+     */
     getServices: function (providerId) {
-        return this.request('GET', this.providerUrl(providerId) + '/services');
+        var me = this, cache = me.services || (me.services = {});
+        if (!cache[providerId]) {
+            cache[providerId] = me.request('GET', me.providerUrl(providerId) + '/services');
+            cache[providerId].catch(function () {
+                delete cache[providerId];
+            });
+        }
+        return cache[providerId];
     },
 
     getSuggestions: function (providerId, repairServiceId, from, to) {
