@@ -122,7 +122,7 @@ Ext.define('Appointments.view.BookingPanel', {
                     width: 300,
                     maxLength: 64,
                     emptyText: t('booking.customerEmpty'),
-                    listeners: {change: me.updateSelection, scope: me}
+                    listeners: {change: me.updateSelection, specialkey: me.onCustomerKey, scope: me}
                 }, {
                     xtype: 'button',
                     itemId: 'bookButton',
@@ -269,6 +269,17 @@ Ext.define('Appointments.view.BookingPanel', {
             '<div class="app-hint">' + t('booking.recheck') + '</div>'
             : '<span class="app-hint">' + t('booking.noSlot') + '</span>');
         this.down('#bookButton').setDisabled(!suggestion || !customer);
+    },
+
+    /** Enter in the customer number field books, under the same conditions as the button. */
+    onCustomerKey: function (field, e) {
+        if (e.getKey() !== e.ENTER) {
+            return;
+        }
+        this.updateSelection(); // the change event is buffered, so a fast Enter may come first
+        if (!this.down('#bookButton').isDisabled()) {
+            this.book();
+        }
     },
 
     book: function () {
