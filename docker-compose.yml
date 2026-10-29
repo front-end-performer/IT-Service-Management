@@ -3,9 +3,9 @@ services:
     # Deviation: postgres:11 is end-of-life (Nov 2023); see docs/adr/0001-technology-stack.md
     image: postgres:17-alpine
     ports:
-      # Default 5432 as in the task. If a local PostgreSQL already uses it: DB_PORT=55432 docker compose up -d
-      # (and start the JAR with the same DB_PORT).
-      - "127.0.0.1:${DB_PORT:-5432}:5432"
+      # Host port 55432 instead of the task's 5432, so a locally installed PostgreSQL never collides.
+      # Override with DB_PORT (and start the JAR with the same DB_PORT).
+      - "127.0.0.1:${DB_PORT:-55432}:5432"
     environment:
       - "POSTGRES_DB=icares"
       - "POSTGRES_USER=icares"

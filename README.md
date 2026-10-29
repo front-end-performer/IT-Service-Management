@@ -25,7 +25,7 @@ Bestandstermine lassen sich aus CSV-Dateien importieren.
 ## Bauen und starten
 
 ```bash
-# 1. PostgreSQL starten (Datenbank/Benutzer/Passwort: icares, Port 5432)
+# 1. PostgreSQL starten (Datenbank/Benutzer/Passwort: icares, Port 55432)
 docker compose up -d
 
 # 2. Ausführbare JAR bauen (führt alle Tests aus; mit -DskipTests überspringen)
@@ -49,15 +49,13 @@ git tag v1.0.0 && git push origin v1.0.0
 Beim Start legt Flyway das Schema an, und der Anbieter- und Dienstleistungskatalog aus `application.yml` wird in die
 Datenbank übernommen.
 
-**Port 5432 schon belegt?** Ist PostgreSQL lokal installiert, belegt es meist Port 5432.
-- **Was passiert:** `docker compose up -d` kann den Container nicht starten („address already in use“), und die JAR
-  verbindet sich stattdessen mit dem *lokalen* PostgreSQL. Sie scheitert dann mit
-  `FATAL: password authentication failed for user "icares"`.
-- **Lösung:** beide mit demselben `DB_PORT` auf einen anderen Port legen:
+**Warum Port 55432 statt 5432?** Ein lokal installiertes PostgreSQL belegt meist Port 5432. Die Anwendung würde sich
+dann unbemerkt damit verbinden und mit `FATAL: password authentication failed for user "icares"` scheitern. Deshalb
+nutzen Container und Anwendung standardmäßig 55432. Ist auch dieser Port belegt, beide mit demselben `DB_PORT` starten:
 
 ```bash
-DB_PORT=55432 docker compose up -d
-DB_PORT=55432 java -jar target/appointments-1.0.0.jar
+DB_PORT=55433 docker compose up -d
+DB_PORT=55433 java -jar target/appointments-1.0.0.jar
 ```
 
 **Ohne Docker:** die eingebettete H2-Dateidatenbank verwenden. Die Daten landen in `./data/`.

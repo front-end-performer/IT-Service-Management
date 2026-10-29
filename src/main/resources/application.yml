@@ -2,8 +2,8 @@ spring:
   application:
     name: appointments
   datasource:
-    # DB_PORT must match docker-compose.yml; default 5432 as in the task.
-    url: jdbc:postgresql://localhost:${DB_PORT:5432}/icares
+    # DB_PORT must match docker-compose.yml; default 55432 to avoid a local PostgreSQL on 5432.
+    url: jdbc:postgresql://localhost:${DB_PORT:55432}/icares
     username: icares
     password: icares
     hikari:
