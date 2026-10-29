@@ -26,11 +26,25 @@ Ext.define('Appointments.Api', {
             init.headers['Content-Type'] = 'application/json';
             init.body = JSON.stringify(body);
         }
-        return fetch(url, init).then(function (response) {
+        var t = Appointments.i18n.t,
+            what = method + ' ' + url.split('?')[0]; // names the failed request in the message, e.g. "GET /it-services"
+        return fetch(url, init).catch(function () {
+            // Blocked, server stopped or offline: the browser's own text ("Failed to fetch") says nothing useful.
+            var error = new Error(t('error.network', what));
+            error.status = 0;
+            throw error;
+        }).then(function (response) {
             return response.text().then(function (text) {
-                var json = text ? JSON.parse(text) : null;
+                var json = null;
+                try {
+                    json = text ? JSON.parse(text) : null;
+                } catch (notJson) {
+                    // e.g. an HTML error page from a proxy; the status below still says what happened
+                }
                 if (!response.ok) {
-                    var error = new Error((json && (json.detail || json.title)) || ('HTTP ' + response.status));
+                    // The API's own explanation (ProblemDetail.detail) wins; otherwise describe the status.
+                    var error = new Error((json && json.detail) ||
+                        t(response.status >= 500 ? 'error.server' : 'error.status', what, response.status));
                     error.status = response.status;
                     throw error;
                 }
@@ -175,7 +189,27 @@ Ext.define('Appointments.Api', {
      * zone given, those are rewritten into the provider's local time like everything else on screen.
      */
     showError: function (title, error, zone) {
-        Ext.Msg.alert(title, Ext.String.htmlEncode(this.errorText(error, zone)));
+        this.showToast('error', '<b>' + Ext.String.htmlEncode(title) + '</b>' + Ext.String.htmlEncode(this.errorText(error, zone)));
+    },
+
+    /** Toast at the top right in the banner look; closes itself after 8 seconds or on its close button. */
+    showToast: function (kind, html) {
+        var me = this,
+            stack = me.toastStack || (me.toastStack = Ext.getBody().createChild({cls: 'app-toasts'})),
+            toast = stack.createChild({
+                cls: 'app-toast',
+                html: me.bannerHtml(kind, html) + '<button type="button" aria-label="' +
+                    Appointments.i18n.t('common.close') + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" ' +
+                    'stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' +
+                    '<path d="M6 6l12 12M18 6 6 18"></path></svg></button>'
+            }),
+            close = function () {
+                if (!toast.destroyed) {
+                    toast.destroy();
+                }
+            };
+        toast.down('button').on('click', close);
+        Ext.defer(close, 8000);
     },
 
     /** The error's message, with UTC times rewritten into `zone` (see showError). */
@@ -191,7 +225,16 @@ Ext.define('Appointments.Api', {
 
     /** Inline message box for a panel: kind is 'info', 'success', 'warn' or 'error'; text is HTML. */
     showBanner: function (banner, kind, html) {
-        banner.setHtml('<div class="app-banner app-banner-' + kind + '">' + html + '</div>');
+        banner.setHtml(this.bannerHtml(kind, html));
         banner.show();
+    },
+
+    /** Message box markup shared by banners and toasts: icon, then html (a bold title and the text). */
+    bannerHtml: function (kind, html) {
+        return '<div class="app-banner app-banner-' + kind + '" role="' + (kind === 'error' || kind === 'warn' ? 'alert' : 'status') + '">' +
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            (kind === 'success' ? '<path d="M5 12.5 10 17l9-10"></path>' : '<circle cx="12" cy="12" r="9"></circle><path d="M12 7v6M12 16.5v.5"></path>') +
+            '</svg><div>' + html + '</div></div>';
     }
 });

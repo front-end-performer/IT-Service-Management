@@ -37,7 +37,7 @@ nicht, welche Zeile gewinnt, wenn Zeilen kollidieren. Beides sind daher unsere E
 - **Nachvollziehbarkeit:** Ein `import_batch` speichert Dateiname, Zeitpunkt und Zähler. `import_rejection` speichert
   Zeilennummer (Header = Zeile 1), Rohzeile, Grund und Meldung. Jeder importierte Termin trägt `source = IMPORTED` und
   seine `import_batch_id`.
-- **Fehler auf Dateiebene:** Eine leere Datei, ein fehlender oder fremder Header, doppelte Spaltennamen oder kaputte
+- **Fehler auf Dateiebene:** Ein Dateiname ohne Endung `.csv` (Groß-/Kleinschreibung egal), eine leere Datei, ein fehlender oder fremder Header, doppelte Spaltennamen oder kaputte
   Anführungszeichen ergeben `400`, und nichts wird importiert. Der Parser akzeptiert ein UTF-8-BOM, CRLF-Zeilenenden,
   Leerzeilen und umgebende Leerzeichen.
 

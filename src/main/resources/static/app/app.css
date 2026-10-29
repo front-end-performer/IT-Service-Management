@@ -1,9 +1,416 @@
-/* Small additions to the Triton theme: slot tiles, chips, badges and inline banners. */
+/*
+ * The app's look on top of the Triton theme: white header with underlined tabs, light grey page, white cards with
+ * rounded corners, 40px fields, blue primary buttons, slot tiles, chips, badges and inline banners.
+ *
+ * Colors: text #1B2430 / #3D4756 / #4A5565, lines #E3E7EC / #D5DBE3, page #F5F7FA, primary #1F5FBF.
+ */
+
+/* Font: Inter when installed, else the system UI font. Nothing is downloaded. The selectors are every Triton rule
+   that sets 'Open Sans' (theme-triton-all*.css) except windows, which the app does not use, so icon fonts on triggers
+   and tools stay untouched. */
+.x-accordion-hd .x-panel-header-title,
+.x-body,
+.x-boundlist-item,
+.x-btn-group-header-title-default,
+.x-btn-group-header-title-default-framed,
+.x-btn-inner-default-large,
+.x-btn-inner-default-medium,
+.x-btn-inner-default-small,
+.x-btn-inner-default-toolbar-large,
+.x-btn-inner-default-toolbar-medium,
+.x-btn-inner-default-toolbar-small,
+.x-btn-inner-grid-cell-small,
+.x-btn-inner-plain-toolbar-large,
+.x-btn-inner-plain-toolbar-medium,
+.x-btn-inner-plain-toolbar-small,
+.x-column-header,
+.x-datepicker-column-header,
+.x-datepicker-date,
+.x-dd-drag-proxy,
+.x-fieldset-header-default > .x-fieldset-header-text,
+.x-form-cb-label-default,
+.x-form-display-field-default,
+.x-form-invalid-under-default,
+.x-form-item-label-default,
+.x-form-text-default,
+.x-grid-empty,
+.x-grid-group-title,
+.x-grid-item,
+.x-grid-rowbody,
+.x-grid-row-summary .x-grid-cell,
+.x-grid-row-summary .x-grid-cell-rowbody,
+.x-grid-row-summary .x-grid-rowwrap,
+.x-html-editor-wrap textarea,
+.x-mask-msg-inner,
+.x-menu-item-text-default,
+.x-menu-item-text-default-menubar,
+.x-monthpicker-item,
+.x-panel-body-default,
+.x-panel-body-default-framed,
+.x-panel-body-light,
+.x-panel-body-light-framed,
+.x-panel-header-title-default,
+.x-panel-header-title-default-framed,
+.x-panel-header-title-light,
+.x-panel-header-title-light-framed,
+.x-progress-default .x-progress-text,
+.x-tab-inner-default,
+.x-toolbar-text-default,
+.x-toolbar-text-footer {
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.x-body {
+    color: #1B2430;
+    font-weight: 400;
+    background: #F5F7FA;
+}
+
+/* Header: logo, app name and the tabs as underlined links. */
+.app-shell .x-tab-bar.x-tab-bar-default {
+    background: #fff;
+    box-shadow: inset 0 -1px 0 #E3E7EC;
+    padding: 0 24px;
+}
+
+.app-shell .x-tab-bar-default-top > .x-tab-bar-body-default {
+    padding: 0;
+}
+
+.app-brand {
+    color: #1B2430;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 28px;
+    padding: 18px 0;
+    white-space: nowrap;
+}
+
+.app-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: #1F5FBF;
+    margin-right: 10px;
+    vertical-align: top;
+}
+
+.app-shell .x-tab-bar-strip {
+    display: none;
+}
+
+.app-shell .x-tab.x-tab-default {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 23px 14px 21px;
+    box-shadow: inset 0 -2px 0 transparent;
+}
+
+.app-shell .x-tab-default .x-tab-inner-default {
+    color: #4A5565;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 18px;
+}
+
+.app-shell .x-tab.x-tab-default.x-tab-over .x-tab-inner-default {
+    color: #1B2430;
+}
+
+.app-shell .x-tab.x-tab-default.x-tab-active {
+    box-shadow: inset 0 -2px 0 #1F5FBF;
+}
+
+/* Same weight as the other tabs: bold text is wider and would shift the tabs on every switch. */
+.app-shell .x-tab.x-tab-default.x-tab-active .x-tab-inner-default {
+    color: #1F5FBF;
+}
+
+.app-shell .x-tab.x-tab-default,
+.app-shell .x-tab.x-tab-default:focus,
+.app-shell .x-tab.x-tab-default.x-tab-focus {
+    outline: none;
+}
+
+/* Tab pages: grey ground. */
+.app-page > .x-panel-bodyWrap > .x-panel-body {
+    background: #F5F7FA;
+}
+
+.app-page-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 28px;
+}
+
+/* Cards: white, 1px line, rounded. The line is a shadow so Ext's layout sizes stay untouched. */
+.app-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 0 0 1px #E3E7EC;
+    overflow: hidden;
+}
+
+.app-card > .x-panel-header {
+    background: #fff;
+    border: 0;
+    padding: 24px 24px 0;
+}
+
+.app-card > .x-panel-header .x-title-text {
+    color: #1B2430;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 24px;
+}
+
+.app-card-small > .x-panel-header {
+    padding: 14px 16px;
+    box-shadow: inset 0 -1px 0 #E3E7EC;
+}
+
+.app-card-small > .x-panel-header .x-title-text {
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.app-card .x-tool-tool-el {
+    color: #4A5565;
+    background: transparent;
+    opacity: 1;
+}
+
+.app-card .x-tool-over .x-tool-tool-el {
+    color: #1B2430;
+}
+
+.app-card-count {
+    font-size: 13px;
+    color: #4A5565;
+}
+
+/* Lines as shadows: Ext drops the borders of docked items. */
+.app-divider {
+    box-shadow: inset 0 -1px 0 #E3E7EC;
+}
+
+/* Fields: 40px high, rounded, labels above in medium weight. */
+.x-form-trigger-wrap-default {
+    border-color: #D5DBE3;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.x-form-trigger-wrap-default.x-form-trigger-wrap-focus {
+    border-color: #1F5FBF;
+}
+
+.x-form-text-default {
+    color: #1B2430;
+    font-size: 14px;
+    line-height: 22px;
+    padding: 8px 12px;
+    min-height: 38px;
+}
+
+.x-form-trigger-default {
+    line-height: 38px;
+    color: #4A5565;
+}
+
+.x-form-item-label-default {
+    color: #3D4756;
+    font-weight: 500;
+    padding-top: 11px;
+}
+
+.x-form-item-label-default.x-form-item-label-top {
+    font-size: 13px;
+    line-height: 18px;
+    min-height: 0;
+    padding: 0 0 6px;
+}
+
+.app-subtle-label .x-form-item-label-default {
+    color: #4A5565;
+    font-weight: 400;
+}
+
+/* Buttons: blue primary, white secondary, square icon buttons. */
+.app-btn-primary.x-btn,
+.app-btn-secondary.x-btn,
+.app-btn-icon.x-btn {
+    border-radius: 8px;
+    padding: 10px 18px;
+}
+
+.app-btn-primary.x-btn {
+    background: #1F5FBF;
+    border-color: #1F5FBF;
+}
+
+.app-btn-primary.x-btn.x-btn-over,
+.app-btn-primary.x-btn.x-btn-pressed {
+    background: #174A96;
+    border-color: #174A96;
+}
+
+.app-btn-primary.x-btn.x-btn-disabled {
+    background: #A9C1E6;
+    border-color: #A9C1E6;
+    opacity: 1;
+}
+
+.app-btn-primary .x-btn-inner,
+.app-btn-primary .x-btn-icon-el {
+    color: #fff;
+}
+
+.app-btn-tall.x-btn {
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.app-btn-secondary.x-btn,
+.app-btn-icon.x-btn {
+    background: #fff;
+    border-color: #D5DBE3;
+}
+
+.app-btn-secondary.x-btn.x-btn-over,
+.app-btn-icon.x-btn.x-btn-over {
+    background: #F5F7FA;
+}
+
+.app-btn-secondary .x-btn-inner,
+.app-btn-icon .x-btn-icon-el {
+    color: #3D4756;
+}
+
+.app-btn-icon.x-btn {
+    padding: 9px;
+}
+
+.app-btn-icon.x-btn.x-btn-disabled {
+    opacity: 0.5;
+}
+
+.x-btn .x-btn-inner {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 18px;
+}
+
+.app-btn-secondary .x-btn-inner {
+    font-weight: 500;
+}
+
+.x-btn .x-btn-icon-el {
+    font-size: 16px;
+    line-height: 18px;
+    height: 18px;
+}
+
+.x-btn.x-btn-focus {
+    outline: 2px solid #1F5FBF;
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+/* Bar at the foot of a card. */
+.app-footbar.x-toolbar {
+    background: #FAFBFC;
+    border: 0;
+    box-shadow: inset 0 1px 0 #E3E7EC;
+}
+
+/* Grids: light header row, 52px rows, blue selection with a bar on the left. */
+.app-card .x-grid-header-ct {
+    background: #FAFBFC;
+}
+
+.app-card .x-grid-body {
+    border-top: 1px solid #E3E7EC;
+}
+
+.app-card .x-column-header {
+    background: #FAFBFC;
+    border-right: 0;
+    color: #4A5565;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.app-card .x-column-header-inner {
+    padding: 12px 16px;
+}
+
+.app-card .x-grid-item {
+    color: #1B2430;
+    font-size: 14px;
+}
+
+.app-card .x-grid-cell-inner {
+    padding: 16px;
+    line-height: 20px;
+}
+
+.app-card .x-grid-item-container .x-grid-item {
+    border-bottom: 1px solid #EEF1F4;
+}
+
+.app-card .x-grid-item-alt {
+    background: #fff;
+}
+
+.app-card .x-grid-item-over {
+    background: #F5F7FA;
+}
+
+.app-card .x-grid-item-selected {
+    background: #EAF1FC;
+}
+
+.app-card .x-grid-item-selected .x-grid-cell:first-child {
+    box-shadow: inset 3px 0 0 #1F5FBF;
+}
+
+.app-card .x-grid-item-focused .x-grid-cell-inner:before {
+    border: 0;
+}
+
+.app-card .x-grid-empty {
+    color: #4A5565;
+    padding: 16px;
+}
+
+.app-cell-strong {
+    font-weight: 500;
+}
+
+.app-cell-muted {
+    color: #3D4756;
+}
+
+.app-code {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    color: #1B2430;
+}
 
 .app-hint {
     font-size: 12px;
-    color: #4a5565;
+    color: #4A5565;
     line-height: 1.5;
+}
+
+.app-hint-13 {
+    font-size: 13px;
 }
 
 .app-chips {
@@ -14,70 +421,140 @@
 
 .app-chip {
     font-size: 12px;
-    color: #3d4756;
-    background: #f0f3f7;
+    color: #4A5565;
+    background: #F0F3F7;
     border-radius: 999px;
     padding: 3px 9px;
     white-space: nowrap;
 }
 
 .app-chip-booked {
-    background: #e7f5ec;
-    color: #1e6b3a;
+    background: #E7F5EC;
+    color: #1E6B3A;
+    font-weight: 500;
 }
 
 .app-badge {
     font-size: 12px;
     font-weight: 600;
-    background: #eaf1fc;
-    color: #174a96;
+    background: #EAF1FC;
+    color: #174A96;
     border-radius: 6px;
-    padding: 2px 7px;
+    padding: 3px 7px;
     margin-right: 8px;
 }
 
 .app-badge-warn {
-    background: #fdeee6;
-    color: #9a3412;
+    background: #FDEEE6;
+    color: #9A3412;
     margin-right: 0;
 }
 
 .app-badge-muted {
-    background: #f0f3f7;
-    color: #3d4756;
+    background: #F0F3F7;
+    color: #3D4756;
     margin-right: 0;
 }
 
-/* Banner: success, info, warning, error. */
+/* Banner: success, info, warning, error; icon on the left, bold title above the text. */
 .app-banner {
-    border-radius: 8px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    border-radius: 10px;
     border: 1px solid;
-    padding: 10px 14px;
+    padding: 14px 16px;
     font-size: 13px;
     line-height: 1.5;
 }
 
+.app-banner svg {
+    flex: none;
+    margin-top: 1px;
+}
+
 .app-banner b {
     display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
 }
 
 .app-banner-info {
-    background: #eaf1fc;
-    border-color: #c4d6f2;
-    color: #174a96;
+    background: #EAF1FC;
+    border-color: #C4D6F2;
+    color: #174A96;
 }
 
 .app-banner-success {
-    background: #e7f5ec;
-    border-color: #b9e0c7;
-    color: #1e6b3a;
+    background: #E7F5EC;
+    border-color: #B9E0C7;
+    color: #1E6B3A;
 }
 
 .app-banner-warn,
 .app-banner-error {
-    background: #fdf1ea;
-    border-color: #f3c9b0;
-    color: #7c2d12;
+    background: #FDF1EA;
+    border-color: #F3C9B0;
+    color: #7C2D12;
+}
+
+/* Toasts: banners stacked at the top right, below the header. */
+.app-toasts {
+    position: fixed;
+    top: 80px;
+    right: 24px;
+    z-index: 30000;
+    width: 380px;
+    max-width: calc(100vw - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.app-toast {
+    position: relative;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(27, 36, 48, 0.14);
+    animation: app-toast-in 0.2s ease-out;
+}
+
+.app-toast .app-banner {
+    padding-right: 44px;
+    overflow-wrap: anywhere;
+}
+
+.app-toast button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.app-toast button:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+@keyframes app-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-toast {
+        animation: none;
+    }
 }
 
 /* Slot tiles: one row per hour, one column per quarter (:00, :15, :30, :45). */
@@ -86,15 +563,15 @@
     grid-template-columns: 36px repeat(4, minmax(0, 1fr));
     gap: 8px;
     align-items: center;
-    padding: 16px 16px 20px;
+    padding: 16px 24px 24px;
 }
 
 .slot-day {
     grid-column: 1 / -1;
     font-size: 13px;
     font-weight: 600;
-    color: #3d4756;
-    margin-top: 8px;
+    color: #3D4756;
+    margin-top: 12px;
 }
 
 .slot-day:first-child {
@@ -105,21 +582,24 @@
     grid-column: 1;
     font-size: 12px;
     font-weight: 600;
-    color: #4a5565;
+    color: #4A5565;
+    font-variant-numeric: tabular-nums;
 }
 
 .slot {
     min-height: 48px;
     box-sizing: border-box;
-    border: 1px solid #d5dbe3;
+    border: 1px solid #D5DBE3;
     border-radius: 8px;
     padding: 6px 10px;
     background: #fff;
-    color: #1b2430;
+    color: #1B2430;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    gap: 2px;
+    font-variant-numeric: tabular-nums;
 }
 
 .slot-start {
@@ -129,16 +609,16 @@
 
 .slot-end {
     font-size: 12px;
-    color: #4a5565;
+    color: #4A5565;
 }
 
 .slot-over {
-    border-color: #1f5fbf;
+    border-color: #1F5FBF;
 }
 
 .slot-selected {
-    background: #1f5fbf;
-    border-color: #1f5fbf;
+    background: #1F5FBF;
+    border-color: #1F5FBF;
     color: #fff;
 }
 
@@ -146,33 +626,57 @@
     color: #fff;
 }
 
+/* The chosen slot in the booking bar. */
+.app-selected {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.app-selected b {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.app-selected .app-none {
+    font-size: 14px;
+    font-weight: 500;
+    color: #4A5565;
+}
+
 /* Appointment details. */
 .app-details {
     font-size: 14px;
-    color: #1b2430;
+    color: #1B2430;
 }
 
 .app-details-when {
-    background: #f5f7fa;
-    border-radius: 8px;
-    padding: 12px 14px;
+    background: #F5F7FA;
+    border-radius: 10px;
+    padding: 14px;
     margin-bottom: 16px;
 }
 
 .app-details-when b {
     display: block;
-    font-size: 17px;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.app-details-when .app-hint {
+    font-size: 13px;
 }
 
 .app-details dl {
     display: grid;
     grid-template-columns: 96px minmax(0, 1fr);
-    row-gap: 10px;
+    row-gap: 12px;
     margin: 0;
 }
 
 .app-details dt {
-    color: #4a5565;
+    color: #4A5565;
 }
 
 .app-details dd {
@@ -180,7 +684,162 @@
     overflow-wrap: anywhere;
 }
 
-/* Import summary counters. */
+.app-details dd.app-id {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px;
+    color: #3D4756;
+}
+
+/* CSV drop zone and the chosen file. */
+.app-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #3D4756;
+    margin-bottom: 6px;
+}
+
+.app-drop-zone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    border: 1.5px dashed #B9C3CF;
+    border-radius: 10px;
+    background: #FAFBFC;
+    padding: 24px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.app-drop-zone u {
+    color: #1F5FBF;
+}
+
+.app-drop-zone.app-drop-over,
+.app-drop-zone:focus-within {
+    border-color: #1F5FBF;
+    background: #EAF1FC;
+}
+
+.app-drop-zone.app-drop-invalid {
+    border-color: #C2410C;
+    background: #FDF1EA;
+}
+
+.app-drop-error {
+    font-size: 13px;
+    font-weight: 500;
+    color: #9A3412;
+}
+
+.app-drop-error:empty {
+    display: none;
+}
+
+.app-drop-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.app-drop-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #E3E7EC;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    font-size: 14px;
+}
+
+.app-drop-file[hidden] {
+    display: none;
+}
+
+.app-drop-file span {
+    flex: 1;
+    overflow-wrap: anywhere;
+}
+
+.app-drop-file button {
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #4A5565;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.app-drop-file button:hover {
+    background: #F0F3F7;
+}
+
+/* Import help: expected format and the row checks. */
+.app-format {
+    background: #F5F7FA;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: #4A5565;
+    line-height: 1.5;
+}
+
+.app-format b,
+.app-checks b {
+    font-size: 12px;
+    font-weight: 600;
+    color: #3D4756;
+}
+
+.app-format code {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    color: #1B2430;
+}
+
+.app-checks {
+    font-size: 12px;
+    color: #4A5565;
+    line-height: 1.5;
+}
+
+.app-checklist {
+    margin: 6px 0;
+    padding-left: 18px;
+    font-size: 12.5px;
+    color: #3D4756;
+    line-height: 1.6;
+}
+
+/* Import summary: title and counters on one line. */
+.app-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 24px;
+}
+
+.app-summary h2 {
+    flex: 1 1 200px;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+}
+
 .app-counters {
     display: flex;
     flex-wrap: wrap;
@@ -195,18 +854,13 @@
     height: 8px;
     border-radius: 50%;
     margin-right: 8px;
-    background: #8a94a3;
+    background: #8A94A3;
 }
 
 .app-counters .ok::before {
-    background: #1e8a4c;
+    background: #1E8A4C;
 }
 
 .app-counters .bad::before {
-    background: #c2410c;
-}
-
-.app-checklist {
-    margin: 4px 0 0;
-    padding-left: 18px;
+    background: #C2410C;
 }

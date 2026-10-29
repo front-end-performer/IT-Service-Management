@@ -213,6 +213,10 @@ class ImportApiTest extends IntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(containsString("Expected header KdnNr,APP_DATE,SERVICE")));
         upload("IT-MUELLER", "empty.csv", new byte[0]).andExpect(status().isBadRequest());
+        upload("IT-MUELLER", "appointments.xlsx", Files.readAllBytes(MUELLER_CATALOG_FILE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Only .csv files can be imported"));
+        upload("IT-MUELLER", "appointments.CSV", Files.readAllBytes(MUELLER_CATALOG_FILE)).andExpect(status().isCreated());
         upload("UNKNOWN", MUELLER_CATALOG_FILE).andExpect(status().isNotFound());
     }
 }

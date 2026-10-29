@@ -9,6 +9,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,11 +37,17 @@ class ImportController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<ImportReportDto> importAppointments(@PathVariable String serviceId,
                                                        @RequestParam("file") MultipartFile file) throws IOException {
+        // Only the name is checked: browsers send different content types for CSV (text/csv, application/vnd.ms-excel,
+        // ...). The content itself is checked by the parser, which rejects anything without the expected header.
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".csv")) {
+            throw new InvalidRequestException("Only .csv files can be imported");
+        }
         if (file.isEmpty()) {
             throw new InvalidRequestException("Uploaded file is empty");
         }
         try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
-            var batch = imports.importCsv(serviceId, file.getOriginalFilename(), reader);
+            var batch = imports.importCsv(serviceId, fileName, reader);
             return ResponseEntity.created(reportUri(serviceId, batch.getId())).body(ImportReportDto.of(batch, true));
         }
     }

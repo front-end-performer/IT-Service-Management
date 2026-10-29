@@ -9,10 +9,10 @@ Ext.define('Appointments.view.BookingPanel', {
 
     title: Appointments.i18n.t('booking.title'),
     layout: {type: 'hbox', align: 'stretch'},
-    bodyPadding: 16,
+    bodyPadding: '32 24 24',
 
-    START_HINT: '<div class="app-hint" style="padding: 20px 16px">' + Appointments.i18n.t('booking.startHint') + '</div>',
-    NOTHING_FOUND: '<div class="app-hint" style="padding: 20px 16px">' + Appointments.i18n.t('booking.nothingFound') + '</div>',
+    START_HINT: '<div class="app-hint app-hint-13" style="padding: 20px 24px">' + Appointments.i18n.t('booking.startHint') + '</div>',
+    NOTHING_FOUND: '<div class="app-hint app-hint-13" style="padding: 20px 24px">' + Appointments.i18n.t('booking.nothingFound') + '</div>',
 
     initComponent: function () {
         var me = this, t = Appointments.i18n.t,
@@ -24,73 +24,76 @@ Ext.define('Appointments.view.BookingPanel', {
         });
 
         me.items = [{
-            xtype: 'form',
-            itemId: 'searchForm',
-            title: t('booking.formTitle'),
-            width: 380,
-            margin: '0 16 0 0',
-            bodyPadding: '4 16 20', // sides in line with the title; first label level with the slot panel's hint
+            // The form card keeps its natural height; the column scrolls on short screens.
+            xtype: 'container',
+            width: 400,
+            margin: '0 24 0 0',
             scrollable: 'y',
-            defaults: {labelAlign: 'top', anchor: '100%'},
+            layout: {type: 'vbox', align: 'stretch'},
             items: [{
-                xtype: 'providercombo',
-                itemId: 'provider',
-                allowBlank: false,
-                listeners: {change: me.onProviderChange, scope: me}
-            }, {
-                xtype: 'component',
-                itemId: 'providerInfo',
-                margin: '0 0 16 0',
-                html: ''
-            }, {
-                xtype: 'combo',
-                itemId: 'service',
-                fieldLabel: t('common.service'),
-                store: me.serviceStore,
-                queryMode: 'local',
-                editable: false,
-                forceSelection: true,
-                displayField: 'label',
-                valueField: 'id',
-                emptyText: t('booking.serviceEmpty'),
-                allowBlank: false,
-                disabled: true,
-                listeners: {change: me.onServiceChange, scope: me}
-            }, {
-                xtype: 'fieldcontainer',
-                fieldLabel: t('common.from'),
-                layout: 'hbox',
-                items: [
-                    {xtype: 'datefield', itemId: 'fromDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1},
-                    {xtype: 'timefield', itemId: 'fromTime', format: 'H:i', increment: 15, value: '08:00', allowBlank: false, width: 100, margin: '0 0 0 8'}
-                ]
-            }, {
-                xtype: 'fieldcontainer',
-                fieldLabel: t('common.to'),
-                layout: 'hbox',
-                items: [
-                    {xtype: 'datefield', itemId: 'toDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1},
-                    {xtype: 'timefield', itemId: 'toTime', format: 'H:i', increment: 15, value: '18:00', allowBlank: false, width: 100, margin: '0 0 0 8'}
-                ]
-            }, {
-                xtype: 'component',
-                cls: 'app-hint',
-                html: Ext.String.htmlEncode(t('booking.rangeHint'))
-            }],
-            // Docked like the slot panel's toolbar, so both buttons share one row at the bottom.
-            dockedItems: [{
-                xtype: 'toolbar',
-                dock: 'bottom',
-                padding: '10 16',
+                xtype: 'form',
+                itemId: 'searchForm',
+                cls: 'app-card',
+                border: false,
+                margin: 1, // room for the card's outline
+                title: t('booking.formTitle'),
+                bodyPadding: '18 24 24',
+                defaults: {labelAlign: 'top', anchor: '100%', margin: '0 0 18 0'},
                 items: [{
+                    xtype: 'providercombo',
+                    itemId: 'provider',
+                    allowBlank: false,
+                    margin: '0 0 6 0',
+                    listeners: {change: me.onProviderChange, scope: me}
+                }, {
+                    xtype: 'component',
+                    itemId: 'providerInfo',
+                    html: ''
+                }, {
+                    xtype: 'combo',
+                    itemId: 'service',
+                    fieldLabel: t('common.service'),
+                    store: me.serviceStore,
+                    queryMode: 'local',
+                    editable: false,
+                    forceSelection: true,
+                    displayField: 'label',
+                    valueField: 'id',
+                    emptyText: t('booking.serviceEmpty'),
+                    allowBlank: false,
+                    disabled: true,
+                    listeners: {change: me.onServiceChange, scope: me}
+                }, {
+                    xtype: 'fieldcontainer',
+                    fieldLabel: t('booking.timeWindow'),
+                    margin: '0 0 6 0',
+                    layout: 'anchor',
+                    defaults: {xtype: 'fieldcontainer', anchor: '100%', layout: 'hbox', labelWidth: 52, cls: 'app-subtle-label', margin: '0 0 8 0'},
+                    items: [{
+                        fieldLabel: t('common.from'),
+                        items: [
+                            {xtype: 'datefield', itemId: 'fromDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1},
+                            {xtype: 'timefield', itemId: 'fromTime', format: 'H:i', increment: 15, value: '08:00', allowBlank: false, width: 96, margin: '0 0 0 8'}
+                        ]
+                    }, {
+                        fieldLabel: t('common.to'),
+                        items: [
+                            {xtype: 'datefield', itemId: 'toDay', format: 'Y-m-d', value: tomorrow, allowBlank: false, flex: 1},
+                            {xtype: 'timefield', itemId: 'toTime', format: 'H:i', increment: 15, value: '18:00', allowBlank: false, width: 96, margin: '0 0 0 8'}
+                        ]
+                    }]
+                }, {
+                    xtype: 'component',
+                    cls: 'app-hint',
+                    html: Ext.String.htmlEncode(t('booking.rangeHint'))
+                }, {
                     xtype: 'button',
                     itemId: 'searchButton',
-                    ui: 'default', // the blue primary button, not the plain toolbar style
+                    cls: 'app-btn-primary app-btn-tall',
                     text: t('booking.search'),
                     iconCls: 'x-fa fa-search',
                     scale: 'medium',
-                    flex: 1,
-                    margin: 0, // no toolbar item gap: same width as the fields above
+                    margin: 0,
                     disabled: true, // enabled once a service is selected, see onServiceChange
                     handler: me.search,
                     scope: me
@@ -99,26 +102,34 @@ Ext.define('Appointments.view.BookingPanel', {
         }, {
             xtype: 'panel',
             itemId: 'slotPanel',
+            cls: 'app-card',
+            border: false,
+            margin: 1, // room for the card's outline
             title: t('booking.slots'),
+            header: {
+                items: [{xtype: 'component', itemId: 'slotCount', cls: 'app-card-count', html: ''}]
+            },
             flex: 1,
             layout: 'fit',
             dockedItems: [{
                 xtype: 'component',
                 dock: 'top',
                 itemId: 'slotInfo',
-                cls: 'app-hint',
-                padding: '12 16 4',
+                cls: 'app-hint app-hint-13 app-divider',
+                padding: '8 24 16',
                 html: t('booking.slotInfo')
             }, {
                 xtype: 'component',
                 dock: 'top',
                 itemId: 'banner',
-                padding: '8 16 0',
+                padding: '16 24 0',
                 hidden: true
             }, {
                 xtype: 'toolbar',
                 dock: 'bottom',
-                padding: '10 16',
+                cls: 'app-footbar',
+                padding: '16 24',
+                layout: {type: 'hbox', align: 'end'},
                 items: [{
                     xtype: 'component',
                     itemId: 'selectedInfo',
@@ -127,18 +138,20 @@ Ext.define('Appointments.view.BookingPanel', {
                     xtype: 'textfield',
                     itemId: 'customerNumber',
                     fieldLabel: t('booking.customerNumber'),
-                    labelWidth: 120,
-                    width: 300,
+                    labelAlign: 'top',
+                    width: 200,
+                    margin: '0 16',
                     maxLength: 64,
                     emptyText: t('booking.customerEmpty'),
                     listeners: {change: me.updateSelection, specialkey: me.onCustomerKey, scope: me}
                 }, {
                     xtype: 'button',
                     itemId: 'bookButton',
-                    ui: 'default', // the blue primary button, not the plain toolbar style
+                    cls: 'app-btn-primary',
                     text: t('booking.book'),
                     iconCls: 'x-fa fa-check',
                     scale: 'medium',
+                    margin: 0,
                     disabled: true,
                     handler: me.book,
                     scope: me
@@ -188,7 +201,7 @@ Ext.define('Appointments.view.BookingPanel', {
             }));
             serviceCombo.enable();
         }).catch(function (e) {
-            Appointments.Api.showError(Appointments.i18n.t('booking.servicesFailed'), e);
+            Appointments.Api.showError(Appointments.i18n.t('services.loadFailed'), e);
         });
     },
 
@@ -202,7 +215,7 @@ Ext.define('Appointments.view.BookingPanel', {
     clearSlots: function () {
         this.down('#suggestions').emptyText = this.START_HINT;
         this.suggestionStore.removeAll();
-        this.down('#slotPanel').setTitle(Appointments.i18n.t('booking.slots'));
+        this.down('#slotCount').setHtml('');
         this.down('#banner').hide();
         this.updateSelection();
     },
@@ -255,8 +268,7 @@ Ext.define('Appointments.view.BookingPanel', {
             lastHour = p.hour;
             return tile;
         }));
-        me.down('#slotPanel').setTitle(t(suggestions.length === 1 ? 'booking.slotCount.one' : 'booking.slotCount.other',
-            suggestions.length));
+        me.down('#slotCount').setHtml(t(suggestions.length === 1 ? 'booking.count.one' : 'booking.count.other', suggestions.length));
         me.down('#slotInfo').setHtml(Ext.String.htmlEncode(t('booking.slotInfoService', service.get('durationMinutes'),
             service.get('name'))));
         me.updateSelection();
@@ -273,10 +285,10 @@ Ext.define('Appointments.view.BookingPanel', {
         var t = Appointments.i18n.t,
             suggestion = this.down('#suggestions').getSelection()[0],
             customer = Ext.String.trim(this.down('#customerNumber').getValue() || '');
-        this.down('#selectedInfo').setHtml(suggestion
-            ? '<b>' + Ext.String.htmlEncode(this.describeSlot(suggestion)) + '</b>' +
-            '<div class="app-hint">' + t('booking.recheck') + '</div>'
-            : '<span class="app-hint">' + t('booking.noSlot') + '</span>');
+        this.down('#selectedInfo').setHtml('<div class="app-selected"><span class="app-hint">' + t('booking.selected') + '</span>' +
+            (suggestion
+                ? '<b>' + Ext.String.htmlEncode(this.describeSlot(suggestion)) + '</b><span class="app-hint">' + t('booking.recheck') + '</span>'
+                : '<span class="app-none">' + t('booking.noSlot') + '</span>') + '</div>');
         this.down('#bookButton').setDisabled(!suggestion || !customer);
     },
 

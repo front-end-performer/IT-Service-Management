@@ -284,7 +284,7 @@ paths:
           schema:
             $ref: '#/definitions/importReport'
         '400':
-          description: Datei leer, falscher Header oder nicht lesbar
+          description: Keine .csv-Datei, Datei leer, falscher Header oder nicht lesbar
           schema:
             $ref: '#/definitions/problem'
         '404':

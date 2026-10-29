@@ -7,7 +7,8 @@ Ext.define('Appointments.view.AppointmentsPanel', {
     xtype: 'appointmentspanel',
 
     title: Appointments.i18n.t('appointments.title'),
-    layout: 'border',
+    layout: {type: 'vbox', align: 'stretch'},
+    bodyPadding: '32 24 24',
 
     initComponent: function () {
         var me = this, t = Appointments.i18n.t;
@@ -18,88 +19,113 @@ Ext.define('Appointments.view.AppointmentsPanel', {
         });
 
         me.items = [{
-            region: 'north',
+            xtype: 'component',
+            margin: '0 0 20 0',
+            html: '<h1 class="app-page-title">' + t('appointments.title') + '</h1>'
+        }, {
             xtype: 'form',
             itemId: 'filterForm',
-            bodyPadding: 10,
+            cls: 'app-card',
             border: false,
-            layout: {type: 'hbox', align: 'middle'},
-            defaults: {margin: '0 10 0 0'},
+            margin: 1, // room for the card's outline
+            bodyPadding: '16 20',
+            layout: {type: 'hbox', align: 'end'},
+            defaults: {labelAlign: 'top', margin: '0 16 0 0'},
             items: [{
                 xtype: 'providercombo',
                 itemId: 'provider',
+                fieldLabel: t('appointments.provider'),
+                width: null,
+                flex: 2,
                 listeners: {change: me.onProviderChange, scope: me}
             }, {
-                xtype: 'datefield', itemId: 'fromDay', fieldLabel: t('common.from'), labelWidth: 40, width: 165, format: 'Y-m-d'
+                xtype: 'datefield', itemId: 'fromDay', fieldLabel: t('common.from'), flex: 1, format: 'Y-m-d',
+                emptyText: t('appointments.anyDate')
             }, {
-                xtype: 'datefield', itemId: 'toDay', fieldLabel: t('common.to'), labelWidth: 30, width: 155, format: 'Y-m-d'
+                xtype: 'datefield', itemId: 'toDay', fieldLabel: t('common.to'), flex: 1, format: 'Y-m-d',
+                emptyText: t('appointments.anyDate')
             }, {
-                xtype: 'combo', itemId: 'service', fieldLabel: t('common.service'), labelWidth: 100, width: 310,
+                xtype: 'combo', itemId: 'service', fieldLabel: t('common.service'), flex: 1.2,
                 store: me.serviceStore, queryMode: 'local', editable: false, displayField: 'label', valueField: 'id',
                 emptyText: t('appointments.allServices')
             }, {
-                xtype: 'button', text: t('appointments.search'), iconCls: 'x-fa fa-filter', handler: me.search, scope: me
+                xtype: 'button', cls: 'app-btn-secondary', scale: 'medium', margin: '0 8 0 0',
+                text: t('appointments.reset'), handler: me.resetFilters, scope: me
             }, {
-                xtype: 'button', text: t('appointments.reset'), handler: me.resetFilters, scope: me
+                xtype: 'button', cls: 'app-btn-primary', scale: 'medium', margin: 0,
+                text: t('appointments.search'), iconCls: 'x-fa fa-search', handler: me.search, scope: me
             }]
         }, {
-            region: 'center',
-            xtype: 'grid',
-            itemId: 'grid',
-            store: me.appointmentStore,
-            emptyText: t('appointments.empty'),
-            dockedItems: [{
-                xtype: 'toolbar',
-                dock: 'bottom',
-                items: [
-                    {itemId: 'prevPage', iconCls: 'x-fa fa-chevron-left', tooltip: t('appointments.prevPage'), disabled: true,
-                        handler: function () { me.goToPage(me.page - 1); }},
-                    {itemId: 'nextPage', iconCls: 'x-fa fa-chevron-right', tooltip: t('appointments.nextPage'), disabled: true,
-                        handler: function () { me.goToPage(me.page + 1); }},
-                    {xtype: 'tbtext', itemId: 'pageInfo', text: ''},
-                    '->',
-                    {xtype: 'tbtext', itemId: 'zoneInfo', text: ''}
+            xtype: 'container',
+            flex: 1,
+            margin: '20 0 0 0',
+            layout: {type: 'hbox', align: 'stretch'},
+            items: [{
+                xtype: 'grid',
+                itemId: 'grid',
+                cls: 'app-card',
+                border: false,
+                margin: 1, // room for the card's outline
+                flex: 1,
+                store: me.appointmentStore,
+                emptyText: t('appointments.empty'),
+                dockedItems: [{
+                    xtype: 'toolbar',
+                    dock: 'bottom',
+                    cls: 'app-footbar',
+                    padding: '12 16',
+                    items: [
+                        {xtype: 'tbtext', itemId: 'pageInfo', cls: 'app-hint app-hint-13', text: ''},
+                        '->',
+                        {itemId: 'prevPage', cls: 'app-btn-icon', iconCls: 'x-fa fa-chevron-left', tooltip: t('appointments.prevPage'),
+                            ariaLabel: t('appointments.prevPage'), disabled: true, handler: function () { me.goToPage(me.page - 1); }},
+                        {itemId: 'nextPage', cls: 'app-btn-icon', iconCls: 'x-fa fa-chevron-right', tooltip: t('appointments.nextPage'),
+                            ariaLabel: t('appointments.nextPage'), disabled: true, margin: 0, handler: function () { me.goToPage(me.page + 1); }}
+                    ]
+                }],
+                columns: [
+                    {text: t('appointments.date'), dataIndex: 'start', width: 160, tdCls: 'app-cell-strong', renderer: me.renderDate, scope: me},
+                    {text: t('appointments.time'), itemId: 'timeColumn', dataIndex: 'start', width: 190, tdCls: 'app-cell-muted', renderer: me.renderTimeRange, scope: me},
+                    {text: t('common.customer'), dataIndex: 'customerNumber', width: 120, renderer: Ext.String.htmlEncode},
+                    {text: t('common.service'), dataIndex: 'repairServiceName', flex: 1, renderer: function (v, m, r) {
+                        return '<span class="app-badge">' + Ext.String.htmlEncode(r.get('repairServiceId')) + '</span>' +
+                            Ext.String.htmlEncode(v);
+                    }},
+                    {text: t('appointments.source'), dataIndex: 'source', width: 120, renderer: me.renderSource, scope: me}
+                ],
+                listeners: {selectionchange: me.showDetails, scope: me}
+            }, {
+                xtype: 'panel',
+                itemId: 'details',
+                cls: 'app-card',
+                border: false,
+                margin: '1 1 1 21', // 20px gap plus room for the card's outline
+                title: t('appointments.details'),
+                tools: [{
+                    type: 'close',
+                    tooltip: t('appointments.closeDetails'),
+                    callback: function () { me.down('#grid').getSelectionModel().deselectAll(); }
+                }],
+                width: 360,
+                bodyPadding: '16 24 24',
+                scrollable: 'y',
+                hidden: true, // shown only while a row is selected; the table takes the full width otherwise
+                tpl: [
+                    '<div class="app-details">',
+                    '<div class="app-details-when"><b>{day} · {time}</b><span class="app-hint">{zone} · {utc} UTC</span></div>',
+                    '<dl>',
+                    '<dt>' + t('common.customer') + '</dt><dd>{customerNumber:htmlEncode}</dd>',
+                    '<dt>' + t('common.service') + '</dt><dd>{repairServiceId:htmlEncode} – {repairServiceName:htmlEncode}</dd>',
+                    '<dt>' + t('appointments.duration') + '</dt><dd>{duration} min</dd>',
+                    '<dt>' + t('appointments.provider') + '</dt><dd>{serviceName:htmlEncode}</dd>',
+                    '<dt>' + t('appointments.source') + '</dt><dd>{source}</dd>',
+                    '<dt>ID</dt><dd class="app-id">{id:htmlEncode}</dd>',
+                    '</dl></div>'
                 ]
-            }],
-            columns: [
-                {text: t('appointments.date'), dataIndex: 'start', width: 140, renderer: me.renderDate, scope: me},
-                {text: t('appointments.time'), itemId: 'timeColumn', dataIndex: 'start', width: 170, renderer: me.renderTimeRange, scope: me},
-                {text: t('common.customer'), dataIndex: 'customerNumber', width: 120, renderer: Ext.String.htmlEncode},
-                {text: t('common.service'), dataIndex: 'repairServiceName', flex: 1, renderer: function (v, m, r) {
-                    return '<span class="app-badge">' + Ext.String.htmlEncode(r.get('repairServiceId')) + '</span>' +
-                        Ext.String.htmlEncode(v);
-                }},
-                {text: t('appointments.source'), dataIndex: 'source', width: 110, renderer: me.renderSource, scope: me}
-            ],
-            listeners: {selectionchange: me.showDetails, scope: me}
-        }, {
-            region: 'east',
-            xtype: 'panel',
-            itemId: 'details',
-            title: t('appointments.details'),
-            width: 360,
-            split: true,
-            collapsible: true,
-            bodyPadding: 16,
-            scrollable: 'y',
-            html: me.NO_DETAILS,
-            tpl: [
-                '<div class="app-details">',
-                '<div class="app-details-when"><b>{day} · {time}</b><span class="app-hint">{zone} · {utc} UTC</span></div>',
-                '<dl>',
-                '<dt>' + t('common.customer') + '</dt><dd>{customerNumber:htmlEncode}</dd>',
-                '<dt>' + t('common.service') + '</dt><dd>{repairServiceId:htmlEncode} – {repairServiceName:htmlEncode}</dd>',
-                '<dt>' + t('appointments.duration') + '</dt><dd>{duration} min</dd>',
-                '<dt>' + t('appointments.provider') + '</dt><dd>{serviceName:htmlEncode}</dd>',
-                '<dt>' + t('appointments.source') + '</dt><dd>{source}</dd>',
-                '<dt>ID</dt><dd>{id:htmlEncode}</dd>',
-                '</dl></div>'
-            ]
+            }]
         }];
         me.callParent();
     },
-
-    NO_DETAILS: '<div class="app-hint">' + Appointments.i18n.t('appointments.noDetails') + '</div>',
 
     SOURCES: {
         BOOKED: '<span class="app-chip app-chip-booked">' + Appointments.i18n.t('appointments.booked') + '</span>',
@@ -122,7 +148,6 @@ Ext.define('Appointments.view.AppointmentsPanel', {
 
     onProviderChange: function (combo, providerId) {
         var me = this;
-        me.down('#zoneInfo').setText(Ext.String.htmlEncode(combo.describeItems().join(' · ')));
         me.down('#timeColumn').setText(Appointments.i18n.t('appointments.timeIn', Ext.String.htmlEncode(combo.getTimeZone())));
         me.down('#service').clearValue();
         me.serviceStore.removeAll();
@@ -131,6 +156,8 @@ Ext.define('Appointments.view.AppointmentsPanel', {
                 me.serviceStore.loadData(services.map(function (s) {
                     return {id: s.id, label: s.code + ' – ' + s.name};
                 }));
+            }).catch(function (e) {
+                Appointments.Api.showError(Appointments.i18n.t('services.loadFailed'), e);
             });
         }
         me.search();
@@ -159,7 +186,7 @@ Ext.define('Appointments.view.AppointmentsPanel', {
             providerId = me.down('#provider').getValue(),
             zone = me.down('#provider').getTimeZone(),
             toDay = me.down('#toDay').getValue();
-        me.down('#details').update(me.NO_DETAILS);
+        me.down('#details').hide();
         if (!providerId) {
             me.appointmentStore.removeAll();
             me.updatePaging(0);
@@ -193,9 +220,10 @@ Ext.define('Appointments.view.AppointmentsPanel', {
     showDetails: function (grid, selection) {
         var me = this, Api = Appointments.Api, details = me.down('#details');
         if (!selection.length) {
-            details.update(me.NO_DETAILS);
+            details.hide();
             return;
         }
+        details.show();
         var zone = me.down('#provider').getTimeZone();
         Api.getAppointment(me.down('#provider').getValue(), selection[0].get('id')).then(function (a) {
             details.update(Ext.apply({}, {

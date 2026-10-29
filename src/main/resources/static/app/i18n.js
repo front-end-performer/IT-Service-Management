@@ -4,7 +4,8 @@
  *
  * Each key holds [English, German] side by side, so a missing translation is visible at a glance.
  * Texts may contain {0}, {1} … placeholders (Ext.String.format) and HTML; callers encode their arguments.
- * API error messages are not translated: they stay English and appear under a translated title.
+ * API error messages are not translated: they stay English and appear under a translated title. When the server gives
+ * no explanation (no answer, bare status), the app writes its own message (error.*), which is translated.
  */
 (function () {
     var preferred = (navigator.languages && navigator.languages[0]) || navigator.language || '',
@@ -16,6 +17,13 @@
             'common.to': ['To', 'Bis'],
             'common.service': ['Service', 'Dienstleistung'],
             'common.customer': ['Customer', 'Kunde'],
+            'common.close': ['Close', 'Schließen'],
+
+            'error.network': ['The server could not be reached ({0}). Check that the app is still running, then reload the page.',
+                'Der Server ist nicht erreichbar ({0}). Bitte prüfen, ob die Anwendung noch läuft, dann die Seite neu laden.'],
+            'error.server': ['The server failed with error {1} ({0}). Try again; if it keeps happening, check the server log.',
+                'Der Server meldet Fehler {1} ({0}). Bitte erneut versuchen; tritt es wiederholt auf, das Server-Log prüfen.'],
+            'error.status': ['The server answered with status {1} ({0}).', 'Der Server antwortete mit Status {1} ({0}).'],
 
             'provider.label': ['IT service provider', 'IT-Service-Anbieter'],
             'provider.empty': ['Select a provider', 'Anbieter auswählen'],
@@ -32,12 +40,13 @@
                 'Keine freien Startzeiten in diesem Zeitraum. Einen längeren Zeitraum oder einen anderen Tag versuchen.'],
             'booking.formTitle': ['Find a slot', 'Termin finden'],
             'booking.serviceEmpty': ['Select a service', 'Dienstleistung auswählen'],
+            'booking.timeWindow': ['Time window', 'Zeitraum'],
             'booking.rangeHint': ['Up to 31 days. An appointment must end by the "To" time.',
                 'Bis zu 31 Tage. Ein Termin muss bis zur „Bis“-Zeit enden.'],
             'booking.search': ['Find available slots', 'Freie Termine suchen'],
             'booking.slots': ['Available slots', 'Freie Termine'],
-            'booking.slotCount.one': ['Available slots · {0} start time', 'Freie Termine · {0} Startzeit'],
-            'booking.slotCount.other': ['Available slots · {0} start times', 'Freie Termine · {0} Startzeiten'],
+            'booking.count.one': ['{0} start time', '{0} Startzeit'],
+            'booking.count.other': ['{0} start times', '{0} Startzeiten'],
             'booking.slotInfo': ['Appointments start every 15 minutes. A time is listed only if the provider has a ' +
                 'free place for the whole duration of the service.',
                 'Termine beginnen alle 15 Minuten. Eine Zeit erscheint nur, wenn der Anbieter für die ganze Dauer ' +
@@ -51,11 +60,12 @@
             'booking.customerNumber': ['Customer number', 'Kundennummer'],
             'booking.customerEmpty': ['e.g. 10001', 'z. B. 10001'],
             'booking.book': ['Book appointment', 'Termin buchen'],
-            'booking.servicesFailed': ['Loading services failed', 'Dienstleistungen konnten nicht geladen werden'],
+            'services.loadFailed': ['Loading services failed', 'Dienstleistungen konnten nicht geladen werden'],
             'booking.searching': ['Searching…', 'Suche läuft…'],
             'booking.searchFailed': ['Search failed', 'Suche fehlgeschlagen'],
             'booking.recheck': ['Availability is checked again when you book.',
                 'Die Verfügbarkeit wird beim Buchen erneut geprüft.'],
+            'booking.selected': ['Selected', 'Ausgewählt'],
             'booking.noSlot': ['No slot selected', 'Kein Termin ausgewählt'],
             'booking.booking': ['Booking…', 'Buchung läuft…'],
             'booking.booked': ['<b>Appointment booked</b>{0} for customer {1}. Appointment id: {2}',
@@ -71,22 +81,22 @@
             'booking.failed': ['Booking failed', 'Buchung fehlgeschlagen'],
 
             'appointments.title': ['Provider appointments', 'Termine des Anbieters'],
-            'appointments.allServices': ['all services', 'alle Dienstleistungen'],
+            'appointments.allServices': ['All services', 'Alle Dienstleistungen'],
+            'appointments.anyDate': ['Any date', 'Beliebiges Datum'],
             'appointments.search': ['Search', 'Suchen'],
             'appointments.reset': ['Reset', 'Zurücksetzen'],
             'appointments.empty': ['No appointments.', 'Keine Termine.'],
             'appointments.prevPage': ['Previous page', 'Vorherige Seite'],
             'appointments.nextPage': ['Next page', 'Nächste Seite'],
-            'appointments.page': ['{0}–{1} of {2}', '{0}–{1} von {2}'],
+            'appointments.page': ['Showing {0}–{1} of {2}', '{0}–{1} von {2}'],
             'appointments.date': ['Date', 'Datum'],
             'appointments.time': ['Time', 'Uhrzeit'],
             'appointments.timeIn': ['Time ({0})', 'Uhrzeit ({0})'],
             'appointments.source': ['Source', 'Herkunft'],
             'appointments.details': ['Appointment details', 'Termindetails'],
+            'appointments.closeDetails': ['Close details', 'Details schließen'],
             'appointments.duration': ['Duration', 'Dauer'],
             'appointments.provider': ['Provider', 'Anbieter'],
-            'appointments.noDetails': ['Select an appointment to see its details.',
-                'Einen Termin auswählen, um die Details zu sehen.'],
             'appointments.booked': ['Booked', 'Gebucht'],
             'appointments.imported': ['Imported', 'Importiert'],
             'appointments.loadFailed': ['Loading appointments failed', 'Termine konnten nicht geladen werden'],
@@ -96,13 +106,17 @@
             'import.formTitle': ['Import appointments', 'Termine importieren'],
             'import.provider': ['Import into provider', 'Importieren in Anbieter'],
             'import.file': ['CSV file', 'CSV-Datei'],
-            'import.choose': ['Choose…', 'Auswählen…'],
-            'import.format': ['<b>Expected format</b><br><code>KdnNr,APP_DATE,SERVICE</code><br>' +
-                '<code>10001,2026-11-02T08:00Z,DIA</code><br>' +
-                'APP_DATE is in UTC; the app shows it in the provider\'s time zone.',
-                '<b>Erwartetes Format</b><br><code>KdnNr,APP_DATE,SERVICE</code><br>' +
-                '<code>10001,2026-11-02T08:00Z,DIA</code><br>' +
-                'APP_DATE ist in UTC; die Anwendung zeigt es in der Zeitzone des Anbieters.'],
+            'import.drop': ['Drop a CSV here or <u>browse</u>', 'CSV hier ablegen oder <u>auswählen</u>'],
+            'import.fileTypes': ['.csv, UTF-8', '.csv, UTF-8'],
+            'import.removeFile': ['Remove file', 'Datei entfernen'],
+            'import.notCsv': ['Only .csv files can be imported. "{0}" was not added.',
+                'Nur .csv-Dateien können importiert werden. „{0}“ wurde nicht übernommen.'],
+            'import.format': ['<b>Expected format</b><code>KdnNr,APP_DATE,SERVICE</code>' +
+                '<code>10001,2026-11-02T08:00Z,DIA</code>' +
+                '<span>APP_DATE is in UTC; the app shows it in the provider\'s time zone.</span>',
+                '<b>Erwartetes Format</b><code>KdnNr,APP_DATE,SERVICE</code>' +
+                '<code>10001,2026-11-02T08:00Z,DIA</code>' +
+                '<span>APP_DATE ist in UTC; die Anwendung zeigt es in der Zeitzone des Anbieters.</span>'],
             'import.checks': ['<b>Each row is checked on its own</b><ul class="app-checklist">' +
                 '<li>3 columns, customer number not empty (max. 64 characters)</li>' +
                 '<li>Valid timestamp on a 15-minute step</li>' +

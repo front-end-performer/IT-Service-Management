@@ -17,13 +17,18 @@ Ext.define('Appointments.view.ProviderCombo', {
         var me = this;
         me.store = Ext.create('Ext.data.Store', {fields: ['id', 'name', 'capacity', 'timeZone', 'openingHours', 'label']});
         me.callParent();
-        Appointments.Api.getProviders().then(function (providers) {
+        // One request for all tabs' combos, so a failure is reported once, not once per tab.
+        if (!me.self.providers) {
+            me.self.providers = Appointments.Api.getProviders();
+            me.self.providers.catch(function (e) {
+                Appointments.Api.showError(Appointments.i18n.t('provider.loadFailed'), e);
+            });
+        }
+        me.self.providers.then(function (providers) {
             me.store.loadData(providers.map(function (p) {
                 return Ext.apply({label: p.name}, p);
             }));
-        }).catch(function (e) {
-            Appointments.Api.showError(Appointments.i18n.t('provider.loadFailed'), e);
-        });
+        }, Ext.emptyFn); // already reported above
     },
 
     /** Time zone of the selected provider; all times on screen are in this zone. */
